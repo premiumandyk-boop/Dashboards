@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASIA FX — USD 기준 환율</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --bg2:      #141720;
+      --bg3:      #1a1e2a;
+      --card:     #181c26;
+      --card-h:   #1e2230;
+      --border:   #2a2f3e;
+      --border-h: #3a4055;
+      --gold:     #d4a853;
+      --gold-dim: #a07838;
+      --text:     #dde2f0;
+      --text2:    #8890aa;
+      --text3:    #555e78;
+      --green:    #52c98a;
+      --green-bg: #0c2418;
+      --green-b:  #1a4832;
+      --red:      #e86060;
+      --red-bg:   #260d0d;
+      --red-b:    #4a1818;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); font-family: 'DM Mono', 'Courier New', monospace; color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+
+    /* ── Header ── */
+    .header { border-bottom: 1px solid var(--border); padding: 24px 24px 20px; background: var(--bg2); }
+    .header-inner { max-width: 860px; margin: 0 auto; }
+    .header-top { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .title { font-family: 'Bebas Neue', sans-serif; font-size: 44px; letter-spacing: 5px; color: var(--gold); line-height: 1; }
+    .subtitle { font-size: 11px; color: var(--text3); letter-spacing: 3px; margin-top: 5px; text-transform: uppercase; }
+    .input-label { font-size: 11px; color: var(--text3); letter-spacing: 1px; margin-bottom: 4px; text-align: right; }
+    .input-row { display: flex; align-items: center; gap: 8px; }
+    .dollar-sign { color: var(--gold); font-size: 20px; }
+    .ainput {
+      background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+      padding: 9px 14px; font-family: inherit; font-size: 20px; width: 150px;
+      border-radius: 4px; outline: none; text-align: right; transition: border-color 0.2s;
+    }
+    .ainput:focus { border-color: var(--gold); }
+    .header-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; flex-wrap: wrap; gap: 8px; }
+    .status { font-size: 11px; color: var(--text3); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .status-dim { color: #2e3448; }
+    .rbtn {
+      background: none; border: 1px solid var(--border); color: var(--gold);
+      padding: 8px 18px; cursor: pointer; font-family: inherit; font-size: 11px;
+      letter-spacing: 2px; text-transform: uppercase; transition: all 0.2s; border-radius: 4px;
+    }
+    .rbtn:hover { background: var(--bg3); border-color: var(--gold); }
+    .rbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+    input[type="date"]:focus { border-color: var(--gold); }
+
+    /* ── Content ── */
+    .content { max-width: 860px; margin: 0 auto; padding: 20px 24px 48px; }
+    .error-box { background: var(--red-bg); border: 1px solid var(--red-b); border-radius: 4px; padding: 14px 18px; color: var(--red); font-size: 13px; margin-bottom: 16px; }
+
+    /* column headers */
+    .col-headers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+    .col-header { display: flex; justify-content: flex-end; gap: 6px; padding-right: 4px; }
+    .col-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; min-width: 58px; text-align: center; }
+
+    /* USD row */
+    .usd-row {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+      padding: 13px 16px; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 6px; border-left: 3px solid var(--gold);
+    }
+    .usd-label { font-size: 10px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
+    .usd-rate { font-size: 20px; color: var(--gold); }
+
+    /* grid */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    /* cards */
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px;
+      transition: all 0.18s; position: relative; overflow: hidden;
+      animation: fi 0.35s ease forwards; opacity: 0;
+      border-left: 3px solid transparent;
+    }
+    .card:hover { background: var(--card-h); border-color: var(--border-h); border-left-color: var(--gold-dim); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .card-flag { font-size: 26px; flex-shrink: 0; line-height: 1; margin-top: 1px; }
+    .card-body { flex: 1; min-width: 0; }
+    .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 6px; }
+    .card-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .card-code { font-size: 10px; color: var(--text3); margin-left: 6px; letter-spacing: 1px; }
+    .badges { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      border-radius: 3px; padding: 3px 7px; font-size: 11px; font-weight: 500;
+      white-space: nowrap; border: 1px solid; letter-spacing: 0.3px;
+    }
+    .badge-up   { color: var(--green); background: var(--green-bg); border-color: var(--green-b); }
+    .badge-down { color: var(--red);   background: var(--red-bg);   border-color: var(--red-b); }
+    .badge-dim  { color: var(--text3); font-size: 10px; }
+    .badge-dot  { color: #2e3448; font-size: 10px; }
+    .card-rate { font-size: 12px; color: var(--text2); line-height: 1.4; }
+    .rate-val { color: var(--gold); font-size: 13px; font-weight: 500; }
+    .card-conv {
+      font-size: 11px; color: var(--text2); border-top: 1px solid var(--border);
+      padding-top: 6px; margin-top: 6px; line-height: 1.4;
+    }
+    .conv-val { color: var(--text); font-weight: 500; }
+
+    /* skeleton */
+    .skeleton-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .pulse { animation: pulse 1.5s ease-in-out infinite; border-radius: 3px; }
+
+    /* legend + footer */
+    .legend { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; font-size: 11px; color: var(--text3); align-items: center; }
+    .legend-sep { color: #2a2f3e; }
+    .footer { margin-top: 10px; padding: 12px 16px; background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; font-size: 10px; color: var(--text3); line-height: 1.8; }
+
+    @keyframes pulse { 0%,100%{opacity:0.25} 50%{opacity:0.6} }
+    @keyframes fi { to { opacity: 1; } }
+
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .col-headers { grid-template-columns: 1fr; }
+      .col-headers .col-header:last-child { display: none; }
+      .title { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <div>
+        <div class="title">ASIA FX</div>
+        <div class="subtitle">USD 기준 실시간 환율</div>
+      </div>
+      <div>
+        <div class="input-label">USD 금액 입력</div>
+        <div class="input-row">
+          <span class="dollar-sign">$</span>
+          <input class="ainput" type="number" id="usdInput" value="1" min="0" placeholder="1" />
+        </div>
+      </div>
+    </div>
+    <div class="header-bottom">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="status" id="status"><span>로딩 중...</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div style="font-size:10px;color:var(--text3);letter-spacing:1px;">기준일</div>
+        <input type="date" id="datePicker"
+          style="background:var(--bg3);border:1px solid var(--border);color:var(--text);
+                 padding:7px 12px;font-family:inherit;font-size:12px;border-radius:4px;
+                 outline:none;cursor:pointer;transition:border-color 0.2s;
+                 color-scheme:dark;"
+          onchange="onDateChange(this.value)"
+        />
+        <button class="rbtn" id="todayBtn" onclick="resetToToday()" style="padding:7px 14px;font-size:10px;">오늘</button>
+        <button class="rbtn" id="refreshBtn" onclick="fetchAll(true)">⟳ 새로고침</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content" id="content">
+  <div class="grid" id="skeleton">
+    <div class="skeleton-card"><div style="font-size:26px">🇰🇷</div><div style="flex:1"><div class="pulse" style="height:13px;width:60px;background:#222840;margin-bottom:8px"></div><div class="pulse" style="height:16px;width:110px;background:#1a1e2a"></div></div></div>
+    <div class="skeleton-card"><div style="font-size:26px">🇦🇺</div><div style="flex:1"><div class="pulse" style="height:13px;width:60px;background:#222840;margin-bottom:8px"></div><div class="pulse" style="height:16px;width:110px;background:#1a1e2a"></div></div></div>
+    <div class="skeleton-card"><div style="font-size:26px">🇻🇳</div><div style="flex:1"><div class="pulse" style="height:13px;width:60px;background:#222840;margin-bottom:8px"></div><div class="pulse" style="height:16px;width:110px;background:#1a1e2a"></div></div></div>
+    <div class="skeleton-card"><div style="font-size:26px">🇹🇼</div><div style="flex:1"><div class="pulse" style="height:13px;width:60px;background:#222840;margin-bottom:8px"></div><div class="pulse" style="height:16px;width:110px;background:#1a1e2a"></div></div></div>
+    <div class="skeleton-card"><div style="font-size:26px">🇮🇩</div><div style="flex:1"><div class="pulse" style="height:13px;width:60px;background:#222840;margin-bottom:8px"></div><div class="pulse" style="height:16px;width:110px;background:#1a1e2a"></div></div></div>
+    <div class="skeleton-card"><div style="font-size:26px">🇹🇭</div><div style="flex:1"><div class="pulse" style="height:13px;width:60px;background:#222840;margin-bottom:8px"></div><div class="pulse" style="height:16px;width:110px;background:#1a1e2a"></div></div></div>
+    <div class="skeleton-card"><div style="font-size:26px">🇵🇭</div><div style="flex:1"><div class="pulse" style="height:13px;width:60px;background:#222840;margin-bottom:8px"></div><div class="pulse" style="height:16px;width:110px;background:#1a1e2a"></div></div></div>
+    <div class="skeleton-card"><div style="font-size:26px">🇲🇾</div><div style="flex:1"><div class="pulse" style="height:13px;width:60px;background:#222840;margin-bottom:8px"></div><div class="pulse" style="height:16px;width:110px;background:#1a1e2a"></div></div></div>
+  </div>
+</div>
+
+<script>
+const CURRENCIES = [
+  { code:"KRW", name:"한국",       flag:"🇰🇷" },
+  { code:"AUD", name:"호주",       flag:"🇦🇺", invert:true },
+  { code:"NZD", name:"뉴질랜드",    flag:"🇳🇿", invert:true },
+
+  { code:"VND", name:"베트남",     flag:"🇻🇳" },
+  { code:"TWD", name:"대만",       flag:"🇹🇼" },
+  { code:"IDR", name:"인도네시아", flag:"🇮🇩" },
+  { code:"THB", name:"태국",       flag:"🇹🇭" },
+  { code:"PHP", name:"필리핀",     flag:"🇵🇭" },
+  { code:"MYR", name:"말레이시아", flag:"🇲🇾" },
+  { code:"SGD", name:"싱가포르",   flag:"🇸🇬" },
+  { code:"CNY", name:"중국",       flag:"🇨🇳" },
+  { code:"HKD", name:"홍콩",       flag:"🇭🇰" },
+  { code:"JPY", name:"일본",       flag:"🇯🇵" },
+  { code:"INR", name:"인도",       flag:"🇮🇳" },
+];
+const CDN_KEY = {KRW:"krw",AUD:"aud",NZD:"nzd",INR:"inr",VND:"vnd",TWD:"twd",IDR:"idr",THB:"thb",PHP:"php",MYR:"myr",SGD:"sgd",CNY:"cny",HKD:"hkd",JPY:"jpy"};
+
+let rates={}, yoyRates={cur:{},prev:{}}, ytdRates={cur:{},prev:{}};
+let loadingYoy=true, loadingYtd=true;
+
+const toISO = d => d.toISOString().split("T")[0];
+const toLocalISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const prevWD = d => { const r=new Date(d); while(r.getDay()===0||r.getDay()===6) r.setDate(r.getDate()-1); return r; };
+
+// 선택된 날짜 기반 동적 변수
+let selectedDate = prevWD(new Date());
+
+function getDateVars(base) {
+  const d  = new Date(base);
+  const CY = d.getFullYear(), PY = CY - 1;
+  return {
+    CY, PY,
+    yearAgoISO:      toLocalISO(prevWD(new Date(PY, d.getMonth(), d.getDate()))),
+    ytdStartISO:     toLocalISO(prevWD(new Date(CY, 0, 2))),
+    ytdEndISO:       toLocalISO(prevWD(new Date(d))),
+    prevYtdStartISO: toLocalISO(prevWD(new Date(PY, 0, 2))),
+    prevYtdEndISO:   toLocalISO(prevWD(new Date(PY, d.getMonth(), d.getDate()))),
+  };
+}
+
+let { CY, PY, yearAgoISO, ytdStartISO, ytdEndISO, prevYtdStartISO, prevYtdEndISO } = getDateVars(selectedDate);
+
+function fmtRate(code, rate, invert) {
+  if (!rate) return "—";
+  const v = invert ? 1/rate : rate;
+  if (["KRW","VND","IDR"].includes(code)) return v.toLocaleString("ko-KR",{maximumFractionDigits:0});
+  if (["JPY","INR"].includes(code)) return v.toLocaleString("ko-KR",{maximumFractionDigits:1});
+  return v.toLocaleString("ko-KR",{minimumFractionDigits:2,maximumFractionDigits:4});
+}
+function fmtConv(code, rate, invert, amount) {
+  if (!rate||!amount) return "—";
+  const v = invert ? amount/rate : rate*amount;
+  if (["KRW","VND","IDR"].includes(code)) return v.toLocaleString("ko-KR",{maximumFractionDigits:0});
+  if (["JPY","INR"].includes(code)) return v.toLocaleString("ko-KR",{maximumFractionDigits:1});
+  return v.toLocaleString("ko-KR",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function calcPct(cur, pre, invert) {
+  if (!cur||!pre||isNaN(cur)||isNaN(pre)) return null;
+  const c=invert?1/cur:cur, p=invert?1/pre:pre;
+  return invert ? (c-p)/p*100 : -(c-p)/p*100;
+}
+
+async function cdnFetch(dateISO) {
+  const tag = dateISO || "latest";
+  const urls = [
+    `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${tag}/v1/currencies/usd.json`,
+    `https://latest.currency-api.pages.dev/v1/currencies/usd.json`,
+  ];
+  for (const url of (dateISO ? [urls[0]] : urls)) {
+    try {
+      const r = await fetch(url, {cache:"no-store"});
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (!d.usd) continue;
+      const out={};
+      CURRENCIES.forEach(c => { const v=d.usd[CDN_KEY[c.code]]; if(v) out[c.code]=v; });
+      return out;
+    } catch {}
+  }
+  return {};
+}
+async function cdnAvg(startISO, endISO) {
+  const dates=[], cur=new Date(startISO), end=new Date(endISO);
+  while(cur<=end){ dates.push(toISO(prevWD(new Date(cur)))); cur.setDate(cur.getDate()+28); }
+  if(!dates.includes(endISO)) dates.push(endISO);
+  const sums={}, counts={};
+  for (const d of dates) {
+    try {
+      const row = await cdnFetch(d);
+      Object.entries(row).forEach(([c,v])=>{ sums[c]=(sums[c]||0)+v; counts[c]=(counts[c]||0)+1; });
+    } catch {}
+  }
+  const out={};
+  Object.keys(sums).forEach(c=>{ out[c]=sums[c]/counts[c]; });
+  return out;
+}
+
+function badgeHTML(pct, loading) {
+  if (loading) return `<span class="badge-dot">···</span>`;
+  if (pct===null||pct===undefined||isNaN(pct)) return `<span class="badge-dim">—</span>`;
+  const up=pct>=0, abs=Math.abs(pct).toFixed(1);
+  return `<span class="badge ${up?'badge-up':'badge-down'}">${up?'▲':'▼'} ${abs}%</span>`;
+}
+
+// ── 국가별 매출 비중 (AK 설정) ──────────────────────────────
+// 한국·일본·인도 제외, 10개국 합계 100%
+const WEIGHTS = {
+  AUD: 22, VND: 14, TWD: 12, IDR: 12,
+  THB: 12, PHP:  9, MYR:  8, SGD:  5,
+  HKD:  2, CNY:  4
+};
+
+function renderFxImpact() {
+  // 전년비(YoY) 기준 가중평균 환 영향 계산
+  const rows = [];
+  let yoyWsum = 0, yoyWtotal = 0;
+  let ytdWsum = 0, ytdWtotal = 0;
+
+  Object.entries(WEIGHTS).forEach(([code, weight]) => {
+    const c = CURRENCIES.find(x => x.code === code);
+    if (!c) return;
+
+    const yoyPct = calcPct(yoyRates.cur[code], yoyRates.prev[code], c.invert);
+    const ytdPct = calcPct(ytdRates.cur[code], ytdRates.prev[code], c.invert);
+
+    if (yoyPct !== null && !isNaN(yoyPct)) {
+      yoyWsum   += yoyPct * weight;
+      yoyWtotal += weight;
+    }
+    if (ytdPct !== null && !isNaN(ytdPct)) {
+      ytdWsum   += ytdPct * weight;
+      ytdWtotal += weight;
+    }
+
+    rows.push({ code, flag: c.flag, name: c.name, weight, yoyPct, ytdPct });
+  });
+
+  const yoyAvg = yoyWtotal > 0 ? yoyWsum / yoyWtotal : null;
+  const ytdAvg = ytdWtotal > 0 ? ytdWsum / ytdWtotal : null;
+
+  const fmtImpact = (v) => {
+    if (v === null || isNaN(v)) return '<span style="color:var(--text3)">—</span>';
+    const up = v >= 0;
+    const col = up ? 'var(--green)' : 'var(--red)';
+    return `<span style="color:${col};font-weight:500">${up?'▲':'▼'} ${Math.abs(v).toFixed(1)}%</span>`;
+  };
+
+  const summaryBadge = (v, loading) => {
+    if (loading) return `<span style="color:var(--text3);font-size:13px">···</span>`;
+    if (v === null || isNaN(v)) return `<span style="color:var(--text3)">—</span>`;
+    const up = v >= 0;
+    const col = up ? 'var(--green)' : 'var(--red)';
+    const bg  = up ? 'var(--green-bg)' : 'var(--red-bg)';
+    const bdr = up ? 'var(--green-b)'  : 'var(--red-b)';
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:${bg};border:1px solid ${bdr};color:${col};border-radius:3px;padding:4px 12px;font-size:16px;font-weight:500">${up?'▲':'▼'} ${Math.abs(v).toFixed(2)}%</span>`;
+  };
+
+  // 국가별 바 차트 (비중 기준)
+  const barRows = rows.map(r => {
+    const barW = r.weight; // 비중 = 바 너비
+    const yoyCol = r.yoyPct === null ? 'var(--text3)' : r.yoyPct >= 0 ? 'var(--green)' : 'var(--red)';
+    const ytdCol = r.ytdPct === null ? 'var(--text3)' : r.ytdPct >= 0 ? 'var(--green)' : 'var(--red)';
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="width:26px;text-align:center;font-size:18px">${r.flag}</div>
+        <div style="width:72px;font-size:11px;color:var(--text2)">${r.name}</div>
+        <div style="width:32px;font-size:10px;color:var(--text3);text-align:right">${r.weight}%</div>
+        <div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden">
+          <div style="width:${barW * 4}%;height:100%;background:var(--gold);border-radius:3px;opacity:0.6"></div>
+        </div>
+        <div style="width:68px;text-align:right;font-size:11px;color:${yoyCol}">
+          ${r.yoyPct===null||isNaN(r.yoyPct) ? '—' : (r.yoyPct>=0?'▲':'▼')+' '+Math.abs(r.yoyPct).toFixed(1)+'%'}
+        </div>
+        <div style="width:68px;text-align:right;font-size:11px;color:${ytdCol}">
+          ${r.ytdPct===null||isNaN(r.ytdPct) ? '—' : (r.ytdPct>=0?'▲':'▼')+' '+Math.abs(r.ytdPct).toFixed(1)+'%'}
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div style="margin-top:20px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+
+      <!-- 헤더 -->
+      <div style="padding:16px 20px 12px;border-bottom:1px solid var(--border)">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--gold);margin-bottom:2px">
+          ASIA FX IMPACT
+        </div>
+        <div style="font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase">
+          매출 비중 가중평균 · 한국·일본·인도 제외
+        </div>
+      </div>
+
+      <!-- 요약 카드 2개 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)">
+        <div style="background:var(--bg2);padding:16px 20px;text-align:center">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">
+            전년 대비 환 영향
+          </div>
+          ${summaryBadge(yoyAvg, loadingYoy)}
+          <div style="font-size:10px;color:var(--text3);margin-top:6px">오늘 vs ${yearAgoISO}</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 20px;text-align:center">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">
+            YTD 동기 환 영향
+          </div>
+          ${summaryBadge(ytdAvg, loadingYtd)}
+          <div style="font-size:10px;color:var(--text3);margin-top:6px">${CY}.01~오늘 vs ${PY} 동기</div>
+        </div>
+      </div>
+
+      <!-- 국가별 명세 -->
+      <div style="padding:12px 20px 4px">
+        <div style="display:flex;align-items:center;gap:10px;padding:0 0 6px;margin-bottom:2px">
+          <div style="width:26px"></div>
+          <div style="width:72px;font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">국가</div>
+          <div style="width:32px;font-size:9px;color:var(--text3);letter-spacing:1px;text-align:right">비중</div>
+          <div style="flex:1;font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">비중 분포</div>
+          <div style="width:68px;font-size:9px;color:var(--text3);letter-spacing:1px;text-align:right;text-transform:uppercase">전년비</div>
+          <div style="width:68px;font-size:9px;color:var(--text3);letter-spacing:1px;text-align:right;text-transform:uppercase">YTD동기</div>
+        </div>
+        ${barRows}
+      </div>
+
+      <!-- 해석 -->
+      <div style="padding:12px 20px 16px;border-top:1px solid var(--border);margin-top:8px">
+        <div style="font-size:10px;color:var(--text3);line-height:1.8">
+          ▲ = 현지 통화 강세 → USD 환산 매출 증가 효과 &nbsp;·&nbsp;
+          ▼ = 현지 통화 약세 → USD 환산 매출 감소 효과<br>
+          가중평균 = Σ(국가 비중 × 전년대비 환율 변동%)
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderGrid() {
+  const amount = parseFloat(document.getElementById('usdInput').value) || 0;
+  const content = document.getElementById('content');
+
+  let html = `
+    <div class="col-headers">
+      <div class="col-header"><span class="col-label">전년비</span><span class="col-label">YTD동기</span></div>
+      <div class="col-header"><span class="col-label">전년비</span><span class="col-label">YTD동기</span></div>
+    </div>
+    <div class="usd-row">
+      <span style="font-size:26px;line-height:1">🇺🇸</span>
+      <div style="flex:1">
+        <div class="usd-label">기준통화 · US Dollar</div>
+        <div class="usd-rate">USD 1 = $ 1.00</div>
+      </div>
+      ${amount>0&&amount!==1 ? `<div style="font-size:13px;color:#8890aa">$${amount.toLocaleString()} USD</div>` : ''}
+    </div>
+    <div class="grid">`;
+
+  CURRENCIES.forEach((c, i) => {
+    const rate   = rates[c.code];
+    const yoyPct = calcPct(yoyRates.cur[c.code], yoyRates.prev[c.code], c.invert);
+    const ytdPct = calcPct(ytdRates.cur[c.code], ytdRates.prev[c.code], c.invert);
+    const rateStr = c.invert
+      ? `1 ${c.code} = <span class="rate-val">${fmtRate(c.code,rate,true)}</span> USD`
+      : `1 USD = <span class="rate-val">${fmtRate(c.code,rate)}</span> ${c.code}`;
+    const convStr = (rate && amount > 0 && amount !== 1)
+      ? `<div class="card-conv">${c.invert
+          ? `${fmtConv(c.code,rate,true,amount)} ${c.code} → $${amount.toLocaleString()}`
+          : `$${amount.toLocaleString()} → <span class="conv-val">${fmtConv(c.code,rate,false,amount)}</span> ${c.code}`
+        }</div>` : '';
+
+    html += `
+      <div class="card" style="animation-delay:${i*0.04}s">
+        <div class="card-flag">${c.flag}</div>
+        <div class="card-body">
+          <div class="card-top">
+            <div><span class="card-name">${c.name}</span><span class="card-code">${c.code}</span></div>
+            <div class="badges">${badgeHTML(yoyPct,loadingYoy)}${badgeHTML(ytdPct,loadingYtd)}</div>
+          </div>
+          <div class="card-rate">${rateStr}</div>
+          ${convStr}
+        </div>
+      </div>`;
+  });
+
+  html += `</div>
+    <div class="legend">
+      <span><span style="color:#52c98a">▲</span> 해당 통화 강세 (USD 대비)</span>
+      <span><span style="color:#e86060">▼</span> 해당 통화 약세</span>
+      <span class="legend-sep">│</span>
+      <span>전년비: 오늘 vs ${yearAgoISO}</span>
+      <span class="legend-sep">│</span>
+      <span>YTD: ${CY}.01~오늘 평균 vs ${PY} 동기 평균</span>
+    </div>
+
+    ${renderFxImpact()}
+
+    <div class="footer">참고용 환율 · 실제 거래 환율과 다를 수 있음 · 데이터: fawazahmed0 Currency API (ECB 기반, 영업일 기준)</div>`;
+
+  content.innerHTML = html;
+}
+
+function updateStatus(msg, extra) {
+  const el = document.getElementById('status');
+  let html = msg ? `<span>${msg}</span>` : '';
+  if (extra) html += `<span class="status-dim">${extra}</span>`;
+  el.innerHTML = html;
+}
+
+function initDatePicker() {
+  const picker = document.getElementById('datePicker');
+  const today = toLocalISO(prevWD(new Date()));
+  picker.value = today;
+  picker.max = today;
+  picker.min = '2020-01-02';
+}
+
+function onDateChange(val) {
+  if (!val) return;
+  selectedDate = prevWD(new Date(val));
+  rates={}; yoyRates={cur:{},prev:{}}; ytdRates={cur:{},prev:{}};
+  loadingYoy=true; loadingYtd=true;
+  fetchAll(false);
+}
+
+function resetToToday() {
+  selectedDate = prevWD(new Date());
+  const today = toLocalISO(selectedDate);
+  document.getElementById('datePicker').value = today;
+  rates={}; yoyRates={cur:{},prev:{}}; ytdRates={cur:{},prev:{}};
+  loadingYoy=true; loadingYtd=true;
+  fetchAll(false);
+}
+
+async function fetchAll(isRefresh) {
+  const btn = document.getElementById('refreshBtn');
+  if (isRefresh) { btn.disabled=true; btn.textContent='⟳ 업데이트 중...'; }
+  loadingYoy=true; loadingYtd=true;
+
+  // 날짜 변수 갱신
+  ({ CY, PY, yearAgoISO, ytdStartISO, ytdEndISO, prevYtdStartISO, prevYtdEndISO } = getDateVars(selectedDate));
+  const isToday = toLocalISO(selectedDate) === toLocalISO(prevWD(new Date()));
+  const fetchDateISO = isToday ? null : toLocalISO(selectedDate);
+
+  try {
+    const current = await cdnFetch(fetchDateISO);
+    if (!Object.keys(current).length) throw new Error();
+    rates = current;
+    const dateLabel = isToday ? '오늘' : toLocalISO(selectedDate);
+    updateStatus(dateLabel + ' · fawazahmed0', '전년비 · YTD 로딩중...');
+    const sk = document.getElementById('skeleton');
+    if (sk) sk.remove();
+    renderGrid();
+  } catch {
+    document.getElementById('content').innerHTML = '<div class="error-box">⚠ 환율 데이터를 불러올 수 없습니다. 날짜를 확인하거나 인터넷 연결을 확인해주세요.</div>';
+    if (isRefresh) { btn.disabled=false; btn.textContent='⟳ 새로고침'; }
+    return;
+  }
+  if (isRefresh) { btn.disabled=false; btn.textContent='⟳ 새로고침'; }
+
+  ;(async () => {
+    try {
+      const [cp, pp] = await Promise.all([cdnFetch(fetchDateISO), cdnFetch(yearAgoISO)]);
+      yoyRates = {cur:cp, prev:pp};
+    } catch {}
+    loadingYoy = false;
+    const dateLabel = isToday ? '오늘' : toLocalISO(selectedDate);
+    updateStatus(dateLabel + ' · fawazahmed0', loadingYtd ? 'YTD 로딩중...' : '');
+    renderGrid();
+  })();
+
+  ;(async () => {
+    try {
+      const curAvg  = await cdnAvg(ytdStartISO, ytdEndISO);
+      const prevAvg = await cdnAvg(prevYtdStartISO, prevYtdEndISO);
+      ytdRates = {cur:curAvg, prev:prevAvg};
+    } catch {}
+    loadingYtd = false;
+    const dateLabel = isToday ? '오늘' : toLocalISO(selectedDate);
+    updateStatus(dateLabel + ' · fawazahmed0');
+    renderGrid();
+  })();
+}
+
+document.getElementById('usdInput').addEventListener('input', () => {
+  if (Object.keys(rates).length) renderGrid();
+});
+
+initDatePicker();
+fetchAll(false);
+</script>
+</body>
+</html>

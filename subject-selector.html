@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>과목 선택기</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #f0f4ff;
+      --white: #ffffff;
+      --border: #e2e8f0;
+      --shadow: 0 2px 8px rgba(99,102,241,0.08);
+      --shadow-lg: 0 8px 24px rgba(99,102,241,0.12);
+
+      /* 카테고리 색상 */
+      --국: #ef4444; --국-bg: #fff1f1; --국-border: #fecaca;
+      --영: #3b82f6; --영-bg: #eff6ff; --영-border: #bfdbfe;
+      --수: #f59e0b; --수-bg: #fffbeb; --수-border: #fde68a;
+      --정: #10b981; --정-bg: #ecfdf5; --정-border: #a7f3d0;
+      --외: #8b5cf6; --외-bg: #f5f3ff; --외-border: #ddd6fe;
+      --일: #64748b; --일-bg: #f8fafc; --일-border: #e2e8f0;
+      --campus: #ec4899; --campus-bg: #fdf2f8; --campus-border: #fbcfe8;
+
+      --primary: #6366f1;
+      --primary-dark: #4338ca;
+      --primary-light: #e0e7ff;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+
+      --text: #1e293b;
+      --text2: #64748b;
+      --text3: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      font-family: 'Noto Sans KR', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── 헤더 ── */
+    .header {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      padding: 20px 24px 0;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+    }
+    .header-inner { max-width: 960px; margin: 0 auto; }
+    .header-title {
+      font-size: 18px; font-weight: 700; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .header-sub { font-size: 12px; opacity: 0.8; margin-bottom: 14px; }
+
+    /* 진행바 */
+    .progress-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .progress-bar {
+      flex: 1; height: 8px; background: rgba(255,255,255,0.25);
+      border-radius: 4px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 4px;
+      background: #fff;
+      transition: width 0.4s ease;
+    }
+    .progress-text { font-size: 13px; font-weight: 700; white-space: nowrap; }
+
+    /* 조건 칩 */
+    .cond-row { display: flex; gap: 6px; flex-wrap: wrap; padding-bottom: 14px; }
+    .cond {
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px; padding: 4px 12px;
+      font-size: 11px; font-weight: 600; cursor: default;
+      transition: all 0.2s;
+    }
+    .cond.ok   { background: rgba(16,185,129,0.3); border-color: rgba(16,185,129,0.6); }
+    .cond.warn { background: rgba(245,158,11,0.3); border-color: rgba(245,158,11,0.6); }
+    .cond.err  { background: rgba(239,68,68,0.4);  border-color: rgba(239,68,68,0.6); }
+    .cond-icon { font-size: 13px; }
+
+    /* ── 본문 ── */
+    .content { max-width: 960px; margin: 0 auto; padding: 20px 24px 80px; }
+
+    /* 학기 탭 */
+    .tab-row {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 8px; margin-bottom: 20px;
+    }
+    .tab {
+      background: var(--white); border: 2px solid var(--border);
+      border-radius: 10px; padding: 10px 8px; cursor: pointer;
+      text-align: center; transition: all 0.2s; position: relative;
+    }
+    .tab:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+    .tab.active {
+      border-color: var(--primary); background: var(--primary-light);
+      box-shadow: var(--shadow-lg);
+    }
+    .tab-label { font-size: 12px; font-weight: 700; color: var(--text2); }
+    .tab.active .tab-label { color: var(--primary-dark); }
+    .tab-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 50%;
+      font-size: 13px; font-weight: 700; margin: 4px auto 0;
+    }
+    .tab-badge.ok   { background: #d1fae5; color: #065f46; }
+    .tab-badge.warn { background: #fef3c7; color: #92400e; }
+    .tab-badge.err  { background: #fee2e2; color: #991b1b; }
+
+    /* 학기 패널 */
+    .panel {
+      background: var(--white); border-radius: 16px;
+      box-shadow: var(--shadow-lg); overflow: hidden;
+    }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      background: linear-gradient(to right, #f8faff, var(--white));
+    }
+    .panel-title { font-size: 16px; font-weight: 700; }
+    .panel-right { display: flex; align-items: center; gap: 10px; }
+    .panel-counter {
+      font-size: 22px; font-weight: 700;
+    }
+    .panel-counter.ok   { color: var(--success); }
+    .panel-counter.warn { color: var(--warning); }
+    .panel-counter.err  { color: var(--danger); }
+    .panel-limit { font-size: 12px; color: var(--text3); }
+    .reset-btn {
+      background: none; border: 1px solid var(--border);
+      color: var(--text3); font-size: 11px; padding: 4px 12px;
+      border-radius: 20px; cursor: pointer; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .reset-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* 카테고리 범례 */
+    .legend {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      padding: 10px 20px; border-bottom: 1px solid var(--border);
+      background: #fafbff;
+    }
+    .leg { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); }
+    .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+    /* 과목 그리드 */
+    .subjects {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 8px; padding: 16px;
+    }
+
+    /* 과목 카드 */
+    .chip {
+      position: relative;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px 10px 10px;
+      cursor: pointer;
+      transition: all 0.18s;
+      background: var(--white);
+      display: flex; align-items: flex-start; gap: 8px;
+      min-height: 58px;
+    }
+    .chip:hover:not(.disabled) {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+    .chip.selected {
+      border-width: 2px;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-lg);
+    }
+    .chip.disabled {
+      opacity: 0.35; cursor: not-allowed;
+      filter: grayscale(0.3);
+    }
+
+    /* 카테고리별 selected 색상 */
+    .chip.sel-국 { border-color: var(--국); background: var(--국-bg); }
+    .chip.sel-영 { border-color: var(--영); background: var(--영-bg); }
+    .chip.sel-수 { border-color: var(--수); background: var(--수-bg); }
+    .chip.sel-정 { border-color: var(--정); background: var(--정-bg); }
+    .chip.sel-외 { border-color: var(--외); background: var(--외-bg); }
+    .chip.sel-일 { border-color: var(--primary); background: var(--primary-light); }
+
+    /* 공유캠퍼스 */
+    .chip.campus-chip { border-style: dashed; }
+    .chip.campus-chip.selected { border-style: solid; }
+
+    /* 카테고리 뱃지 */
+    .cat-badge {
+      flex-shrink: 0;
+      width: 24px; height: 24px; border-radius: 6px;
+      font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cat-국 { background: var(--국-bg); color: var(--국); border: 1px solid var(--국-border); }
+    .cat-영 { background: var(--영-bg); color: var(--영); border: 1px solid var(--영-border); }
+    .cat-수 { background: var(--수-bg); color: var(--수); border: 1px solid var(--수-border); }
+    .cat-정 { background: var(--정-bg); color: var(--정); border: 1px solid var(--정-border); }
+    .cat-외 { background: var(--외-bg); color: var(--외); border: 1px solid var(--외-border); }
+    .cat-일 { background: var(--일-bg); color: var(--일); border: 1px solid var(--일-border); }
+
+    .chip-body { flex: 1; min-width: 0; }
+    .chip-name {
+      font-size: 12px; font-weight: 500; color: var(--text);
+      line-height: 1.35; word-break: keep-all;
+    }
+    .chip.selected .chip-name { font-weight: 700; }
+    .campus-tag {
+      display: inline-block; margin-top: 3px;
+      font-size: 9px; padding: 1px 5px; border-radius: 4px;
+      background: var(--campus-bg); color: var(--campus);
+      border: 1px solid var(--campus-border); font-weight: 600;
+    }
+
+    /* 체크 아이콘 */
+    .check-circle {
+      flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.18s; margin-top: 1px;
+    }
+    .chip.selected .check-circle {
+      border-color: var(--primary); background: var(--primary);
+    }
+    .check-icon { color: white; font-size: 11px; font-weight: 900; display: none; }
+    .chip.selected .check-icon { display: block; }
+
+    /* ── 선택 요약 ── */
+    .summary-wrap {
+      margin-top: 20px;
+      background: var(--white); border-radius: 16px;
+      box-shadow: var(--shadow-lg); overflow: hidden;
+    }
+    .summary-header {
+      padding: 14px 20px; background: linear-gradient(135deg,#6366f1,#8b5cf6);
+      color: white; font-size: 14px; font-weight: 700;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .summary-body { padding: 16px 20px; }
+
+    .sem-summary { margin-bottom: 12px; }
+    .sem-summary-label {
+      font-size: 11px; font-weight: 700; color: var(--text2);
+      margin-bottom: 6px; display: flex; align-items: center; gap-6px;
+    }
+    .sel-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .sel-chip {
+      font-size: 11px; padding: 3px 10px; border-radius: 20px;
+      font-weight: 500;
+    }
+    .sc-국 { background: var(--국-bg); color: var(--국); border: 1px solid var(--국-border); }
+    .sc-영 { background: var(--영-bg); color: var(--영); border: 1px solid var(--영-border); }
+    .sc-수 { background: var(--수-bg); color: var(--수); border: 1px solid var(--수-border); }
+    .sc-정 { background: var(--정-bg); color: var(--정); border: 1px solid var(--정-border); }
+    .sc-외 { background: var(--외-bg); color: var(--외); border: 1px solid var(--외-border); }
+    .sc-일 { background: var(--일-bg); color: var(--일); border: 1px solid var(--일-border); }
+    .sc-empty { color: var(--text3); font-size: 12px; }
+
+    /* 알림 */
+    .alerts { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+    .alert {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 500;
+    }
+    .alert-ok   { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+    .alert-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .alert-err  { background: #fff1f2; border: 1px solid #fecaca; color: #991b1b; }
+
+    /* 하단 초기화 */
+    .footer-btn {
+      width: 100%; margin-top: 12px;
+      background: none; border: 1.5px solid var(--border);
+      color: var(--text3); font-size: 12px; padding: 9px;
+      border-radius: 8px; cursor: pointer; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .footer-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1e293b; color: white; padding: 11px 22px;
+      border-radius: 24px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25); z-index: 9999;
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { opacity:0; transform:translateX(-50%) translateY(12px); }
+      to   { opacity:1; transform:translateX(-50%) translateY(0); }
+    }
+
+    @media(max-width:600px) {
+      .tab-row { grid-template-columns: repeat(2,1fr); }
+      .subjects { grid-template-columns: repeat(auto-fill, minmax(148px,1fr)); }
+      .content { padding: 16px 14px 80px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="header">
+  <div class="header-inner">
+    <div class="header-title">📚 과목 선택기</div>
+    <div class="header-sub">2학년 1학기 ~ 3학년 2학기 · 총 22과목 선택</div>
+    <div class="progress-wrap">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <div class="progress-text" id="progressText">0 / 22</div>
+    </div>
+    <div class="cond-row" id="condRow"></div>
+  </div>
+</div>
+
+<!-- 본문 -->
+<div class="content">
+  <!-- 학기 탭 -->
+  <div class="tab-row" id="tabRow"></div>
+
+  <!-- 과목 패널 -->
+  <div class="panel" id="panel"></div>
+
+  <!-- 선택 요약 -->
+  <div class="summary-wrap">
+    <div class="summary-header">
+      <span>📋 선택 현황</span>
+      <span id="summaryCount" style="font-size:13px;opacity:0.9"></span>
+    </div>
+    <div class="summary-body" id="summaryBody"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// 데이터
+// ══════════════════════════════════════════════════════════════════
+const SEMESTERS = [
+  {
+    id:"2-1", label:"2학년 1학기", limit:5,
+    subjects:[
+      {id:"주제탐구독서",    name:"주제탐구독서",         cat:"국"},
+      {id:"경제수학",        name:"경제수학",             cat:"수"},
+      {id:"이산수학",        name:"이산수학",             cat:"수"},
+      {id:"영어문학읽기",    name:"영어문학읽기",         cat:"영"},
+      {id:"세계시민과지리",  name:"세계시민과지리",       cat:"일"},
+      {id:"세계사",          name:"세계사",               cat:"일"},
+      {id:"윤리와사상",      name:"윤리와사상",           cat:"일"},
+      {id:"정치",            name:"정치",                 cat:"일"},
+      {id:"국제관계의이해",  name:"국제관계의이해",       cat:"일"},
+      {id:"물리학",          name:"물리학",               cat:"일"},
+      {id:"화학",            name:"화학",                 cat:"일"},
+      {id:"생명과학",        name:"생명과학",             cat:"일"},
+      {id:"지구과학",        name:"지구과학",             cat:"일"},
+      {id:"고급화학",        name:"고급화학",             cat:"일", campus:true},
+      {id:"정보_2-1",        name:"정보",                 cat:"정"},
+      {id:"독일어권문화",    name:"독일어권문화",         cat:"외"},
+      {id:"중국문화",        name:"중국문화",             cat:"외"},
+    ]
+  },
+  {
+    id:"2-2", label:"2학년 2학기", limit:5,
+    subjects:[
+      {id:"독서토론과글쓰기", name:"독서토론과글쓰기",   cat:"국"},
+      {id:"고급대수",         name:"고급대수",           cat:"수", campus:true},
+      {id:"미디어영어",       name:"미디어영어",         cat:"영"},
+      {id:"동아시아사기행",   name:"동아시아사기행",     cat:"일"},
+      {id:"현대사회와윤리",   name:"현대사회와윤리",     cat:"일"},
+      {id:"여행지리",         name:"여행지리",           cat:"일"},
+      {id:"도시의미래탐구",   name:"도시의미래탐구",     cat:"일"},
+      {id:"법과사회",         name:"법과사회",           cat:"일"},
+      {id:"경제",             name:"경제",               cat:"일"},
+      {id:"역학과에너지",     name:"역학과에너지",       cat:"일"},
+      {id:"물질과에너지",     name:"물질과에너지",       cat:"일"},
+      {id:"세포와물질대사",   name:"세포와물질대사",     cat:"일"},
+      {id:"행성우주과학",     name:"행성우주과학",       cat:"일"},
+      {id:"고급물리학",       name:"고급물리학",         cat:"일", campus:true},
+      {id:"인공지능기초",     name:"인공지능기초",       cat:"정"},
+      {id:"독일어",           name:"독일어",             cat:"외"},
+      {id:"중국어",           name:"중국어",             cat:"외"},
+    ]
+  },
+  {
+    id:"3-1", label:"3학년 1학기", limit:5,
+    subjects:[
+      {id:"언어생활탐구",    name:"언어생활탐구",         cat:"국"},
+      {id:"인공지능수학",    name:"인공지능수학",         cat:"수"},
+      {id:"수학과제탐구",    name:"수학과제탐구",         cat:"수"},
+      {id:"영어독해와작문",  name:"영어독해와작문",       cat:"영"},
+      {id:"현대세계의변화",  name:"현대세계의변화",       cat:"일"},
+      {id:"인문학과윤리",    name:"인문학과윤리",         cat:"일"},
+      {id:"한국지리탐구",    name:"한국지리탐구",         cat:"일"},
+      {id:"사회와문화",      name:"사회와문화",           cat:"일"},
+      {id:"금융과경제생활",  name:"금융과경제생활",       cat:"일"},
+      {id:"전자기와양자",    name:"전자기와양자",         cat:"일"},
+      {id:"화학반응의세계",  name:"화학반응의세계",       cat:"일"},
+      {id:"생물의유전",      name:"생물의유전",           cat:"일"},
+      {id:"지구시스템과학",  name:"지구시스템과학",       cat:"일"},
+      {id:"융합과학탐구",    name:"융합과학탐구",         cat:"일"},
+      {id:"독일어회화",      name:"독일어회화",           cat:"외"},
+      {id:"중국어회화",      name:"중국어회화",           cat:"외"},
+      {id:"데이터과학",      name:"데이터과학",           cat:"정"},
+    ]
+  },
+  {
+    id:"3-2", label:"3학년 2학기", limit:7,
+    subjects:[
+      {id:"문학과영상",             name:"문학과영상",           cat:"국"},
+      {id:"실용통계",               name:"실용통계",             cat:"수"},
+      {id:"수학과문화",             name:"수학과문화",           cat:"수"},
+      {id:"심화영어",               name:"심화영어",             cat:"영"},
+      {id:"역사로탐구하는현대세계", name:"역사로탐구하는현대세계",cat:"일"},
+      {id:"윤리문제탐구",           name:"윤리문제탐구",         cat:"일"},
+      {id:"기후변화와지속가능한세계",name:"기후변화와지속가능한세계",cat:"일"},
+      {id:"사회문제탐구",           name:"사회문제탐구",         cat:"일"},
+      {id:"기후변화와환경생태",     name:"기후변화와환경생태",   cat:"일"},
+      {id:"과학의역사와문화",       name:"과학의역사와문화",     cat:"일"},
+      {id:"심화독일어",             name:"심화독일어",           cat:"외"},
+      {id:"심화중국어",             name:"심화중국어",           cat:"외"},
+      {id:"소프트웨어와생활",       name:"소프트웨어와생활",     cat:"정"},
+      {id:"인간과심리",             name:"인간과심리",           cat:"일"},
+      {id:"교육의이해",             name:"교육의이해",           cat:"일"},
+      {id:"삶과종교",               name:"삶과종교",             cat:"일"},
+      {id:"보건",                   name:"보건",                 cat:"일"},
+      {id:"인간과경제활동",         name:"인간과경제활동",       cat:"일"},
+      {id:"논술",                   name:"논술",                 cat:"일"},
+    ]
+  }
+];
+
+const CAT_NAMES = { 국:"국어", 영:"영어", 수:"수학", 정:"정보", 외:"제2외국어", 일:"일반" };
+const CAT_EMOJI = { 국:"📖", 영:"🌍", 수:"🔢", 정:"💻", 외:"💬", 일:"📝" };
+
+// ══════════════════════════════════════════════════════════════════
+// State
+// ══════════════════════════════════════════════════════════════════
+let selected = new Set(JSON.parse(localStorage.getItem('subsel_v2')||'[]'));
+let activeTab = "2-1";
+
+function save() {
+  localStorage.setItem('subsel_v2', JSON.stringify([...selected]));
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 통계
+// ══════════════════════════════════════════════════════════════════
+function getStats() {
+  const bySem = {};
+  SEMESTERS.forEach(s => bySem[s.id] = 0);
+  let kye=0, jeong_oe=0, campus=0;
+
+  SEMESTERS.forEach(s => s.subjects.forEach(sub => {
+    if (!selected.has(sub.id)) return;
+    bySem[s.id]++;
+    if (['국','영','수'].includes(sub.cat)) kye++;
+    if (['정','외'].includes(sub.cat)) jeong_oe++;
+    if (sub.campus) campus++;
+  }));
+
+  return { total:selected.size, bySem, kye, jeong_oe, campus };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 토글
+// ══════════════════════════════════════════════════════════════════
+function toggle(semId, subId) {
+  const sem = SEMESTERS.find(s=>s.id===semId);
+  const stats = getStats();
+
+  if (selected.has(subId)) {
+    selected.delete(subId);
+  } else {
+    if (stats.bySem[semId] >= sem.limit) {
+      toast(`${sem.label}은 최대 ${sem.limit}과목까지 선택할 수 있어요 😅`);
+      return;
+    }
+    selected.add(subId);
+  }
+  save();
+  render();
+}
+
+function resetSem(semId) {
+  SEMESTERS.find(s=>s.id===semId).subjects.forEach(s=>selected.delete(s.id));
+  save(); render();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Toast
+// ══════════════════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  document.querySelectorAll('.toast').forEach(e=>e.remove());
+  clearTimeout(toastTimer);
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  toastTimer = setTimeout(()=>el.remove(), 2400);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Render
+// ══════════════════════════════════════════════════════════════════
+function render() {
+  const stats = getStats();
+  renderHeader(stats);
+  renderTabs(stats);
+  renderPanel(stats);
+  renderSummary(stats);
+}
+
+function renderHeader(stats) {
+  const pct = Math.round(stats.total / 22 * 100);
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('progressText').textContent = `${stats.total} / 22`;
+
+  const kyeStatus   = stats.kye<=8  ? (stats.kye>0?'ok':'') : 'err';
+  const jeStatus    = stats.jeong_oe>=4 ? 'ok' : stats.total>0?'warn':'';
+  const totalStatus = stats.total===22?'ok':stats.total>22?'err':stats.total>0?'warn':'';
+
+  document.getElementById('condRow').innerHTML = `
+    <div class="cond ${totalStatus}">
+      <span class="cond-icon">📋</span> 총 ${stats.total}/22과목
+    </div>
+    <div class="cond ${kyeStatus}">
+      <span class="cond-icon">✏️</span> 국·영·수 ${stats.kye}/8 (최대)
+    </div>
+    <div class="cond ${jeStatus}">
+      <span class="cond-icon">🌐</span> 정보·외국어 ${stats.jeong_oe}/4 (최소)
+    </div>
+    ${stats.campus>0?`<div class="cond warn"><span class="cond-icon">🏫</span> 공유캠퍼스 ${stats.campus}개</div>`:''}
+  `;
+}
+
+function tabStatus(semId, stats) {
+  const sem = SEMESTERS.find(s=>s.id===semId);
+  const cnt = stats.bySem[semId];
+  if (cnt === sem.limit) return 'ok';
+  if (cnt > sem.limit) return 'err';
+  return 'warn';
+}
+
+function renderTabs(stats) {
+  document.getElementById('tabRow').innerHTML = SEMESTERS.map(sem => {
+    const cnt = stats.bySem[sem.id];
+    const st = tabStatus(sem.id, stats);
+    const isActive = sem.id === activeTab;
+    return `
+      <div class="tab ${isActive?'active':''}" onclick="activeTab='${sem.id}';render()">
+        <div class="tab-label">${sem.label}</div>
+        <div class="tab-badge ${st}">${cnt}/${sem.limit}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderPanel(stats) {
+  const sem = SEMESTERS.find(s=>s.id===activeTab);
+  const cnt = stats.bySem[sem.id];
+  const st  = tabStatus(sem.id, stats);
+  const full = cnt >= sem.limit;
+
+  const legend = Object.entries(CAT_NAMES).map(([cat,name])=>
+    `<div class="leg">
+      <div class="leg-dot" style="background:var(--${cat});"></div>
+      <span>${CAT_EMOJI[cat]} ${name}</span>
+    </div>`
+  ).join('');
+
+  const chips = sem.subjects.map(sub => {
+    const isSel = selected.has(sub.id);
+    const isDisabled = !isSel && full;
+    const selClass = isSel ? `selected sel-${sub.cat}` : '';
+    const campusClass = sub.campus ? 'campus-chip' : '';
+    const onclick = isDisabled ? '' : `onclick="toggle('${sem.id}','${sub.id}')"`;
+    return `
+      <div class="chip ${selClass} ${campusClass} ${isDisabled?'disabled':''}" ${onclick}>
+        <div class="cat-badge cat-${sub.cat}">${sub.cat}</div>
+        <div class="chip-body">
+          <div class="chip-name">${sub.name}</div>
+          ${sub.campus?'<div><span class="campus-tag">🏫 공유캠퍼스</span></div>':''}
+        </div>
+        <div class="check-circle"><span class="check-icon">✓</span></div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('panel').innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title">✏️ ${sem.label}</div>
+      <div class="panel-right">
+        <span class="panel-counter ${st}">${cnt}</span>
+        <span class="panel-limit">/ ${sem.limit}과목</span>
+        <button class="reset-btn" onclick="resetSem('${sem.id}')">이 학기 초기화</button>
+      </div>
+    </div>
+    <div class="legend">${legend}</div>
+    <div class="subjects">${chips}</div>
+  `;
+}
+
+function renderSummary(stats) {
+  const alerts = [];
+  if (stats.kye > 8)
+    alerts.push({t:'err', m:`국·영·수 과목이 ${stats.kye}개로 최대(8개)를 초과했어요. ${stats.kye-8}개를 줄여야 해요.`});
+  if (stats.total > 0 && stats.jeong_oe < 4)
+    alerts.push({t:'warn', m:`정보·제2외국어가 ${stats.jeong_oe}개예요. 최소 4개가 필요해요.`});
+  if (stats.campus > 0)
+    alerts.push({t:'warn', m:`공유캠퍼스 과목 ${stats.campus}개는 별도 신청이 필요해요.`});
+  if (stats.total===22 && stats.kye<=8 && stats.jeong_oe>=4)
+    alerts.push({t:'ok', m:'🎉 모든 조건을 충족했어요! 22과목 선택 완료!'});
+
+  const alertHTML = alerts.map(a=>
+    `<div class="alert alert-${a.t}">${a.t==='ok'?'✅':a.t==='warn'?'⚠️':'❌'} ${a.m}</div>`
+  ).join('');
+
+  const listHTML = SEMESTERS.map(sem => {
+    const subs = sem.subjects.filter(s=>selected.has(s.id));
+    const chips = subs.length
+      ? subs.map(s=>`<span class="sel-chip sc-${s.cat}">${CAT_EMOJI[s.cat]} ${s.name}</span>`).join('')
+      : '<span class="sc-empty">아직 선택 없음</span>';
+    const cnt = stats.bySem[sem.id];
+    const ok  = cnt === sem.limit;
+    return `
+      <div class="sem-summary">
+        <div class="sem-summary-label">
+          ${ok?'✅':'⏳'} ${sem.label} &nbsp;
+          <span style="color:${ok?'var(--success)':'var(--warning)'}">
+            ${cnt}/${sem.limit}
+          </span>
+        </div>
+        <div class="sel-chips">${chips}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('summaryCount').textContent =
+    `${stats.total}/22과목 선택됨`;
+
+  document.getElementById('summaryBody').innerHTML = `
+    ${listHTML}
+    ${alertHTML}
+    <button class="footer-btn" onclick="if(confirm('전체 선택을 초기화할까요?')){selected.clear();save();render();}">
+      🗑 전체 초기화
+    </button>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>

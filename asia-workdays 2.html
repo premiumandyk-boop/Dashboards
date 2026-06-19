@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ASIA WORKDAYS — 국가별 영업일 비교</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:#0f1117;--bg2:#141720;--bg3:#1a1e2a;
+      --card:#181c26;--card-h:#1e2230;
+      --border:#2a2f3e;--bh:#3a4055;
+      --gold:#d4a853;--text:#dde2f0;--text2:#8890aa;--text3:#555e78;
+      --green:#52c98a;--gbg:#0c2418;--gb:#1a4832;
+      --red:#e86060;--rbg:#260d0d;--rb:#4a1818;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);font-family:'DM Mono','Courier New',monospace;color:var(--text);min-height:100vh;}
+    .header{background:var(--bg2);border-bottom:1px solid var(--border);padding:24px 28px 20px;}
+    .header-inner{max-width:860px;margin:0 auto;}
+    .header-top{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:16px;}
+    .title{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:5px;color:var(--gold);line-height:1;}
+    .subtitle{font-size:11px;color:var(--text3);letter-spacing:3px;margin-top:4px;text-transform:uppercase;}
+    .note{font-size:10px;color:var(--text3);margin-top:6px;line-height:1.6;}
+    .month-row{display:flex;gap:6px;flex-wrap:wrap;}
+    .mbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:5px 10px;cursor:pointer;font-family:inherit;font-size:11px;border-radius:3px;transition:all 0.15s;min-width:36px;text-align:center;}
+    .mbtn:hover{border-color:var(--bh);color:var(--text2);}
+    .mbtn.active{border-color:var(--gold);color:var(--gold);background:rgba(212,168,83,0.08);}
+    .content{max-width:860px;margin:0 auto;padding:20px 28px 48px;}
+    .col-headers{display:grid;grid-template-columns:1fr 100px 100px 110px;gap:8px;margin-bottom:6px;padding:0 14px;}
+    .ch{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;text-align:center;}
+    .ch:first-child{text-align:left;}
+    .table{display:flex;flex-direction:column;gap:7px;}
+    .row{display:grid;grid-template-columns:1fr 100px 100px 110px;gap:8px;align-items:center;background:var(--card);border:1px solid var(--border);border-left:3px solid transparent;border-radius:6px;padding:13px 14px;transition:all 0.18s;animation:fi 0.35s ease forwards;opacity:0;}
+    .row:hover{background:var(--card-h);border-color:var(--bh);border-left-color:var(--gold);}
+    .cc{display:flex;align-items:center;gap:10px;}
+    .fl{font-size:24px;line-height:1;}
+    .cn{font-size:13px;font-weight:500;}
+    .ck{font-size:10px;color:var(--text3);margin-left:5px;letter-spacing:1px;}
+    .nc{text-align:center;}
+    .wd{font-size:16px;font-weight:500;}
+    .wdc{color:var(--text);}
+    .wdp{color:var(--text2);}
+    .hl{font-size:10px;color:var(--text3);margin-top:2px;}
+    .dc{text-align:center;}
+    .db{display:inline-flex;align-items:center;gap:3px;border-radius:3px;padding:4px 10px;font-size:13px;font-weight:500;white-space:nowrap;border:1px solid;}
+    .dup{color:var(--green);background:var(--gbg);border-color:var(--gb);}
+    .ddn{color:var(--red);background:var(--rbg);border-color:var(--rb);}
+    .dsm{color:var(--text3);background:var(--bg3);border-color:var(--border);}
+    .footer{margin-top:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;color:var(--text3);line-height:1.8;}
+    @keyframes fi{to{opacity:1;}}
+    @media(max-width:600px){.col-headers{display:none;}.row{grid-template-columns:1fr 80px 80px 90px;padding:10px;}}
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <div>
+        <div class="title">ASIA WORKDAYS</div>
+        <div class="subtitle">국가별 영업일 · 전년 대비 (2026 vs 2025)</div>
+        <div class="note">
+          영업일 = 평일(월~금) − 공휴일(대체공휴일 포함, 주말 공휴일 제외)<br>
+          🇦🇺 NSW기준 · 🇮🇳 중앙정부 가제티드 · 🇹🇭 내각결정 포함 · 🇨🇳 황금연휴 국무원 공식
+        </div>
+      </div>
+    </div>
+    <div class="month-row" id="monthRow"></div>
+  </div>
+</div>
+<div class="content">
+  <div class="col-headers">
+    <div class="ch">국가</div>
+    <div class="ch">2026년</div>
+    <div class="ch">2025년</div>
+    <div class="ch">전년 대비</div>
+  </div>
+  <div class="table" id="table"></div>
+  <div class="footer">
+    참고용 · 실제와 다를 수 있음 · 이슬람 공휴일(🇮🇩🇲🇾🇵🇭)은 월 관측에 따라 ±1일 변동 가능
+  </div>
+</div>
+<script>
+// ============================================================
+// 공휴일 데이터 — 각국 공식 소스 기반, 주말 처리 규칙 적용
+// ✅ 주말(토/일) 공휴일은 제거 또는 대체 평일로 이동
+// ✅ toLocalISO() 사용으로 timezone 버그 수정
+// ============================================================
+const HOLIDAYS = {
+  // 한국: 토→대체없음(5대국경일·명절 제외), 일→월 대체
+  KR: {
+    2025: ["2025-01-01","2025-01-28","2025-01-29","2025-01-30",
+           "2025-05-05","2025-05-06","2025-05-13",
+           "2025-06-06","2025-08-15",
+           "2025-10-03","2025-10-06","2025-10-07","2025-10-08","2025-10-09",
+           "2025-12-25"],
+    2026: ["2026-01-01",
+           "2026-02-16","2026-02-17","2026-02-18","2026-02-19",
+           "2026-03-02","2026-05-01","2026-05-05","2026-05-25",
+           "2026-06-03","2026-07-17","2026-08-17",
+           "2026-09-24","2026-09-25",
+           "2026-10-05","2026-10-09","2026-12-25"]
+  },
+  // 호주: NSW기준. Easter Saturday 제외. 토→월, 일→월
+  AU: {
+    2025: ["2025-01-01","2025-01-27","2025-04-18","2025-04-21",
+           "2025-04-25","2025-06-09","2025-08-04","2025-10-06",
+           "2025-12-25","2025-12-26"],
+    2026: ["2026-01-01","2026-01-26","2026-04-03","2026-04-06",
+           "2026-04-27","2026-06-08","2026-08-03","2026-10-05",
+           "2026-12-25","2026-12-28"]
+  },
+  // 인도: 중앙정부 가제티드. 주말 공휴일 대체 없음 → 제거
+  IN: {
+    2025: ["2025-04-10","2025-04-14","2025-04-18","2025-05-12",
+           "2025-06-06","2025-08-15","2025-09-05",
+           "2025-10-02","2025-10-20","2025-11-05","2025-12-25"],
+    2026: ["2026-01-26","2026-03-19","2026-03-20","2026-04-02",
+           "2026-04-03","2026-04-14","2026-05-01","2026-05-27",
+           "2026-06-26","2026-09-04","2026-10-02","2026-10-19",
+           "2026-11-25","2026-12-25"]
+  },
+  // 베트남: 일→월 대체
+  VN: {
+    2025: ["2025-01-01","2025-01-27","2025-01-28","2025-01-29","2025-01-30","2025-01-31",
+           "2025-04-07","2025-04-30","2025-05-01",
+           "2025-09-01","2025-09-02"],
+    2026: ["2026-01-01","2026-02-16","2026-02-17","2026-02-18","2026-02-19","2026-02-20",
+           "2026-04-27","2026-04-28","2026-04-30","2026-05-01",
+           "2026-09-02","2026-09-03"]
+  },
+  // 대만: 토→대체(정부결정), 일→월 대체. 2025 신규공휴일 반영
+  TW: {
+    2025: ["2025-01-01","2025-01-27","2025-01-28","2025-01-29","2025-01-30","2025-01-31",
+           "2025-02-28","2025-04-03","2025-04-04","2025-05-01","2025-05-30",
+           "2025-09-29","2025-10-06","2025-10-10","2025-12-25"],
+    2026: ["2026-01-01","2026-01-02",
+           "2026-02-16","2026-02-17","2026-02-18","2026-02-19","2026-02-20",
+           "2026-03-02","2026-04-06","2026-04-07","2026-05-01","2026-06-19",
+           "2026-09-28","2026-10-01","2026-10-09","2026-10-26","2026-12-25"]
+  },
+  // 인도네시아: SKB 공식. 주말 이슬람 공휴일 → 대체평일로 이동
+  ID: {
+    2025: ["2025-01-01","2025-01-27","2025-01-29",
+           "2025-03-31","2025-04-01","2025-04-18",
+           "2025-05-01","2025-05-12","2025-05-29",
+           "2025-06-06","2025-06-27","2025-09-05",
+           "2025-12-25","2025-12-26"],
+    2026: ["2026-01-01","2026-01-16","2026-02-17","2026-03-19",
+           "2026-03-23","2026-03-24","2026-03-25",
+           "2026-04-03","2026-05-01","2026-05-14","2026-05-27",
+           "2026-06-01","2026-06-16","2026-08-17","2026-08-25","2026-12-25"]
+  },
+  // 태국: 토→월, 일→월 대체
+  TH: {
+    2025: ["2025-01-01","2025-02-12","2025-04-07",
+           "2025-04-13","2025-04-14","2025-04-15",
+           "2025-05-01","2025-05-05","2025-05-12","2025-06-03",
+           "2025-07-10","2025-07-28","2025-08-11","2025-08-12",
+           "2025-10-13","2025-10-23","2025-12-05","2025-12-10","2025-12-31"],
+    2026: ["2026-01-01","2026-01-02","2026-02-16","2026-04-06",
+           "2026-04-13","2026-04-14","2026-04-15",
+           "2026-05-01","2026-05-04","2026-05-05",
+           "2026-06-01","2026-06-03","2026-07-07","2026-07-28","2026-08-12",
+           "2026-10-13","2026-10-23","2026-12-07","2026-12-10","2026-12-31"]
+  },
+  // 필리핀: Proclamation 1006. 주말 공휴일 대체 없음 → 제거
+  PH: {
+    2025: ["2025-01-01","2025-01-29","2025-04-09","2025-04-17","2025-04-18",
+           "2025-05-01","2025-06-12","2025-08-21","2025-08-25",
+           "2025-12-08","2025-12-25","2025-12-30","2025-12-31"],
+    2026: ["2026-01-01","2026-02-17","2026-03-20","2026-04-02","2026-04-03",
+           "2026-04-09","2026-05-01","2026-05-20","2026-06-12",
+           "2026-08-21","2026-08-31","2026-11-30",
+           "2026-12-08","2026-12-25","2026-12-30","2026-12-31"]
+  },
+  // 말레이시아: 연방(KL기준). 일→월, 토→없음
+  MY: {
+    2025: ["2025-01-01","2025-01-29","2025-01-30","2025-02-11",
+           "2025-03-31","2025-04-01","2025-05-01","2025-05-12",
+           "2025-06-02","2025-06-06","2025-06-26",
+           "2025-09-01","2025-09-16","2025-10-20","2025-11-05","2025-12-25"],
+    2026: ["2026-01-01","2026-01-28","2026-02-17","2026-02-18",
+           "2026-03-16","2026-03-23","2026-05-01","2026-05-25",
+           "2026-05-27","2026-06-01","2026-08-31","2026-09-16",
+           "2026-10-26","2026-11-09","2026-12-25"]
+  },
+  // 싱가포르: MOM 공식. 일→월 대체
+  SG: {
+    2025: ["2025-01-01","2025-01-29","2025-01-30","2025-03-31",
+           "2025-04-18","2025-05-01","2025-05-12","2025-06-06",
+           "2025-08-11","2025-10-20","2025-12-25"],
+    2026: ["2026-01-01","2026-02-17","2026-02-18","2026-03-23",
+           "2026-04-03","2026-05-01","2026-05-27","2026-06-01",
+           "2026-08-10","2026-11-09","2026-12-25"]
+  },
+  // 중국: 국무원 공식. 황금연휴 주말 포함(계산에 무해)
+  CN: {
+    2025: ["2025-01-01",
+           "2025-01-28","2025-01-29","2025-01-30","2025-01-31",
+           "2025-02-01","2025-02-02","2025-02-03","2025-02-04",
+           "2025-04-04","2025-04-05","2025-04-06",
+           "2025-05-01","2025-05-02","2025-05-03","2025-05-04","2025-05-05",
+           "2025-05-31","2025-06-01","2025-06-02",
+           "2025-10-01","2025-10-02","2025-10-03","2025-10-04",
+           "2025-10-05","2025-10-06","2025-10-07","2025-10-08"],
+    2026: ["2026-01-01","2026-01-02","2026-01-03",
+           "2026-02-15","2026-02-16","2026-02-17","2026-02-18","2026-02-19",
+           "2026-02-20","2026-02-21","2026-02-22","2026-02-23",
+           "2026-04-04","2026-04-05","2026-04-06",
+           "2026-05-01","2026-05-02","2026-05-03","2026-05-04","2026-05-05",
+           "2026-06-19","2026-06-20","2026-06-21",
+           "2026-09-25","2026-09-26","2026-09-27",
+           "2026-10-01","2026-10-02","2026-10-03","2026-10-04",
+           "2026-10-05","2026-10-06","2026-10-07"]
+  },
+  // 홍콩: General Holidays. 토→월, 일→화. Easter Sat 제외
+  HK: {
+    2025: ["2025-01-01","2025-01-29","2025-01-30","2025-01-31",
+           "2025-04-04","2025-04-18","2025-04-21",
+           "2025-05-01","2025-05-05","2025-06-02",
+           "2025-07-01","2025-10-01","2025-10-07","2025-10-29",
+           "2025-12-25","2025-12-26"],
+    2026: ["2026-01-01","2026-01-02",
+           "2026-02-17","2026-02-18","2026-02-19",
+           "2026-04-03","2026-04-06","2026-04-07",
+           "2026-05-01","2026-05-25","2026-06-22",
+           "2026-07-01","2026-10-01","2026-10-26","2026-11-17",
+           "2026-12-25","2026-12-28"]
+  },
+  // 일본: 내각부 공식. 日→月 振替休日. Silver Week 2026
+  JP: {
+    2025: ["2025-01-01","2025-01-13","2025-02-11","2025-02-24",
+           "2025-03-20","2025-04-29",
+           "2025-05-05","2025-05-06",
+           "2025-07-21","2025-08-11","2025-09-15","2025-09-23",
+           "2025-10-13","2025-11-03","2025-11-24"],
+    2026: ["2026-01-01","2026-01-12","2026-02-11","2026-02-23",
+           "2026-03-20","2026-04-29",
+           "2026-05-04","2026-05-05","2026-05-06",
+           "2026-07-20","2026-08-11",
+           "2026-09-21","2026-09-22","2026-09-23",
+           "2026-10-12","2026-11-03","2026-11-23"]
+  }
+};
+
+const COUNTRIES = [
+  {code:"KR",name:"한국",      flag:"🇰🇷"},
+  {code:"AU",name:"호주",      flag:"🇦🇺"},
+  
+  {code:"VN",name:"베트남",    flag:"🇻🇳"},
+  {code:"TW",name:"대만",      flag:"🇹🇼"},
+  {code:"ID",name:"인도네시아",flag:"🇮🇩"},
+  {code:"TH",name:"태국",      flag:"🇹🇭"},
+  {code:"PH",name:"필리핀",    flag:"🇵🇭"},
+  {code:"MY",name:"말레이시아",flag:"🇲🇾"},
+  {code:"SG",name:"싱가포르",  flag:"🇸🇬"},
+  {code:"CN",name:"중국",      flag:"🇨🇳"},
+  {code:"HK",name:"홍콩",      flag:"🇭🇰"},
+  {code:"JP",name:"일본",      flag:"🇯🇵"},
+  {code:"IN",name:"인도",      flag:"🇮🇳"},
+];
+
+const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+let selectedMonth = 0;
+
+function toLocalISO(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function isWeekend(d) { return d.getDay()===0||d.getDay()===6; }
+
+function countWorkdays(year, month, hols) {
+  const holSet = new Set(hols);
+  let wd=0, hc=0;
+  const start = month ? new Date(year,month-1,1) : new Date(year,0,1);
+  const end   = month ? new Date(year,month,0)   : new Date(year,11,31);
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    if(isWeekend(d)) continue;
+    wd++;
+    if(holSet.has(toLocalISO(d))) hc++;
+  }
+  return {total: wd-hc, hols: hc};
+}
+
+function buildMonthRow(){
+  let html=`<button class="mbtn ${selectedMonth===0?'active':''}" onclick="setMonth(0)">전체</button>`;
+  for(let m=1;m<=12;m++)
+    html+=`<button class="mbtn ${selectedMonth===m?'active':''}" onclick="setMonth(${m})">${MONTHS[m-1]}</button>`;
+  document.getElementById('monthRow').innerHTML=html;
+}
+function setMonth(m){selectedMonth=m;buildMonthRow();renderTable();}
+
+function renderTable(){
+  let html='';
+  COUNTRIES.forEach((c,i)=>{
+    const cy=countWorkdays(2026,selectedMonth,HOLIDAYS[c.code][2026]);
+    const py=countWorkdays(2025,selectedMonth,HOLIDAYS[c.code][2025]);
+    const diff=cy.total-py.total;
+    const sign=diff>0?'+':'';
+    const cls=diff>0?'dup':diff<0?'ddn':'dsm';
+    const arrow=diff>0?'▲':diff<0?'▼':'─';
+    html+=`
+      <div class="row" style="animation-delay:${i*0.04}s">
+        <div class="cc"><span class="fl">${c.flag}</span><div><span class="cn">${c.name}</span><span class="ck">${c.code}</span></div></div>
+        <div class="nc"><div class="wd wdc">${cy.total}일</div><div class="hl">공휴일 ${cy.hols}</div></div>
+        <div class="nc"><div class="wd wdp">${py.total}일</div><div class="hl">공휴일 ${py.hols}</div></div>
+        <div class="dc"><span class="db ${cls}">${arrow} ${sign}${diff}일</span></div>
+      </div>`;
+  });
+  document.getElementById('table').innerHTML=html;
+}
+
+buildMonthRow();
+renderTable();
+</script>
+</body>
+</html>

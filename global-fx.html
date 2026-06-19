@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GLOBAL FX — 지역별 환율 대시보드</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:#0f1117;--bg2:#141720;--bg3:#1a1e2a;
+      --card:#181c26;--card-h:#1e2230;
+      --border:#2a2f3e;--bh:#3a4055;
+      --gold:#d4a853;--text:#dde2f0;--text2:#8890aa;--text3:#555e78;
+      --green:#52c98a;--gbg:#0c2418;--gb:#1a4832;
+      --red:#e86060;--rbg:#260d0d;--rb:#4a1818;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);font-family:'DM Mono','Courier New',monospace;color:var(--text);min-height:100vh;}
+
+    /* Header */
+    .header{background:var(--bg2);border-bottom:1px solid var(--border);padding:22px 24px 18px;}
+    .header-inner{max-width:1100px;margin:0 auto;}
+    .header-top{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:14px;}
+    .title{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:5px;color:var(--gold);line-height:1;}
+    .subtitle{font-size:11px;color:var(--text3);letter-spacing:3px;margin-top:4px;text-transform:uppercase;}
+    .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+    .status{font-size:10px;color:var(--text3);}
+    .rbtn{background:none;border:1px solid var(--border);color:var(--gold);padding:7px 14px;cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:2px;text-transform:uppercase;transition:all 0.2s;border-radius:4px;}
+    .rbtn:hover{background:var(--bg3);border-color:var(--gold);}
+    .rbtn:disabled{opacity:0.4;cursor:not-allowed;}
+
+    /* Summary cards */
+    .content{max-width:1100px;margin:0 auto;padding:20px 24px 48px;}
+    .summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:20px;}
+    @media(max-width:900px){.summary-grid{grid-template-columns:repeat(3,1fr);}}
+    @media(max-width:600px){.summary-grid{grid-template-columns:repeat(2,1fr);}}
+    .sum-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:14px 16px;cursor:pointer;transition:all 0.18s;border-left:3px solid transparent;}
+    .sum-card:hover{background:var(--card-h);border-color:var(--bh);}
+    .sum-card.active{border-left-color:var(--gold);background:var(--card-h);}
+    .sum-icon{font-size:22px;margin-bottom:8px;}
+    .sum-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;line-height:1;}
+    .sum-impact-row{margin-bottom:4px;}
+    .sum-impact-label{font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;}
+    .sum-impact-val{font-size:13px;}
+    .sum-divider{border:none;border-top:1px solid var(--border);margin:8px 0;}
+    .sum-impact-row{margin-bottom:6px;}
+    .sum-impact-label{font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:3px;}
+    .sum-impact-val{font-size:13px;}
+    .sum-divider{border:none;border-top:1px solid var(--border);margin:8px 0;}
+    .sum-n{font-size:9px;color:var(--text3);}
+    .badge{display:inline-flex;align-items:center;gap:2px;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:500;border:1px solid;white-space:nowrap;}
+    .b-up  {color:var(--green);background:var(--gbg);border-color:var(--gb);}
+    .b-dn  {color:var(--red);  background:var(--rbg);border-color:var(--rb);}
+    .b-na  {color:var(--text3);background:var(--bg3);border-color:var(--border);}
+    .b-dot {color:var(--text3);font-size:9px;}
+
+    /* Region detail panel */
+    .region-panel{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;animation:fi 0.25s ease;}
+
+    /* Region header */
+    .rp-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--bg2);border-bottom:1px solid var(--border);}
+    .rp-left{display:flex;align-items:center;gap:10px;}
+    .rp-icon{font-size:22px;}
+    .rp-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:var(--gold);}
+    .rp-impact{display:flex;gap:16px;align-items:center;}
+    .rp-label{font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;}
+    .rp-val{font-size:18px;font-weight:500;}
+
+    /* Weight total indicator */
+    .wt-bar{display:flex;align-items:center;gap:8px;padding:8px 18px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);}
+    .wt-progress{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+    .wt-fill{height:100%;border-radius:2px;transition:width 0.3s;}
+    .wt-ok  {background:var(--green);}
+    .wt-over{background:var(--red);}
+    .wt-low {background:var(--gold);}
+
+    /* Col headers */
+    .col-hdr{display:grid;grid-template-columns:1fr 90px 90px 80px 80px 80px 80px;gap:6px;padding:6px 18px;border-bottom:1px solid var(--border);}
+    .ch{font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;text-align:center;}
+    .ch:first-child{text-align:left;}
+
+    /* Country rows */
+    .crow{display:grid;grid-template-columns:1fr 90px 90px 80px 80px 80px 80px;gap:6px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--border);transition:background 0.15s;}
+    .crow:last-child{border-bottom:none;}
+    .crow:hover{background:var(--card-h);}
+    .cc{display:flex;align-items:center;gap:9px;}
+    .fl{font-size:20px;}
+    .cn{font-size:12px;font-weight:500;}
+    .ck{font-size:9px;color:var(--text3);margin-left:4px;}
+    .nc{text-align:center;}
+    .rate-val{font-size:13px;font-weight:500;color:var(--gold);}
+    .rate-sub{font-size:9px;color:var(--text3);margin-top:1px;}
+
+    /* Weight input */
+    .w-input{width:62px;background:var(--bg3);border:1px solid var(--bh);color:var(--text);padding:6px 8px;font-family:inherit;font-size:13px;border-radius:4px;text-align:right;transition:border-color 0.2s;outline:none;-webkit-appearance:none;appearance:none;touch-action:manipulation;}
+    .w-input:focus{border-color:var(--gold);background:var(--card-h);}
+    .w-pct{font-size:10px;color:var(--text3);margin-left:2px;}
+
+    .footer{margin-top:16px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;color:var(--text3);line-height:1.8;}
+    @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+    .pulse{animation:pulse 1.5s ease-in-out infinite;border-radius:3px;}
+    @keyframes pulse{0%,100%{opacity:0.25}50%{opacity:0.6}}
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-track{background:var(--bg)}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <div>
+        <div class="title">GLOBAL FX</div>
+        <div class="subtitle">지역별 환율 · 매출비중 가중평균 FX Impact</div>
+      </div>
+      <div class="header-right">
+        <span class="status" id="status">로딩 중...</span>
+        <button class="rbtn" id="refreshBtn" onclick="fetchAll(true)">⟳ 새로고침</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <!-- Summary cards -->
+  <div class="summary-grid" id="summaryGrid">
+    <!-- rendered by JS -->
+  </div>
+
+  <!-- Active region detail -->
+  <div id="regionDetail"></div>
+
+  <div class="footer">
+    환율 데이터: fawazahmed0 Currency API · 전년비 = 오늘 vs 1년 전 · YTD = 올해 1월~오늘 평균 vs 전년 동기 평균<br>
+    FX Impact = Σ(국가 비중 × 전년비 환율 변동%) · ▲ = 현지 통화 강세 → USD 환산 매출 증가 효과
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 지역 & 국가 정의
+// ============================================================
+const REGIONS = [
+  {
+    id:"asia", icon:"🌏", name:"아시아",
+    countries:[
+      {code:"KRW",name:"한국",      flag:"🇰🇷"},
+      {code:"AUD",name:"호주",      flag:"🇦🇺",invert:true},
+      {code:"VND",name:"베트남",    flag:"🇻🇳"},
+      {code:"TWD",name:"대만",      flag:"🇹🇼"},
+      {code:"IDR",name:"인도네시아",flag:"🇮🇩"},
+      {code:"THB",name:"태국",      flag:"🇹🇭"},
+      {code:"PHP",name:"필리핀",    flag:"🇵🇭"},
+      {code:"MYR",name:"말레이시아",flag:"🇲🇾"},
+      {code:"SGD",name:"싱가포르",  flag:"🇸🇬"},
+      {code:"CNY",name:"중국",      flag:"🇨🇳"},
+      {code:"HKD",name:"홍콩",      flag:"🇭🇰"},
+      {code:"JPY",name:"일본",      flag:"🇯🇵"},
+    ]
+  },
+  {
+    id:"india", icon:"🇮🇳", name:"인도",
+    countries:[
+      {code:"INR",name:"인도",      flag:"🇮🇳"},
+    ]
+  },
+  {
+    id:"mea",  icon:"🌍", name:"중동/아프리카",
+    countries:[
+      {code:"SAR",name:"사우디",    flag:"🇸🇦"},
+      {code:"EGP",name:"이집트",    flag:"🇪🇬"},
+      {code:"LBP",name:"레반트",    flag:"🇱🇧"},
+      {code:"MAD",name:"모로코",    flag:"🇲🇦"},
+      {code:"AED",name:"UAE",       flag:"🇦🇪"},
+      {code:"TRY",name:"튀르키예",  flag:"🇹🇷"},
+      {code:"ILS",name:"이스라엘",  flag:"🇮🇱"},
+      {code:"TND",name:"튀니지",    flag:"🇹🇳"},
+      {code:"ZAR",name:"남아공",    flag:"🇿🇦"},
+      {code:"DZD",name:"알제리",    flag:"🇩🇿"},
+      {code:"NGN",name:"나이지리아",flag:"🇳🇬"},
+      {code:"IQD",name:"이라크",    flag:"🇮🇶"},
+    ]
+  },
+  {
+    id:"nam",  icon:"🗽", name:"북미",
+    countries:[
+      {code:"USD",name:"미국",      flag:"🇺🇸", base:true},
+      {code:"CAD",name:"캐나다",    flag:"🇨🇦"},
+    ]
+  },
+  {
+    id:"latam",icon:"🌎", name:"중남미",
+    countries:[
+      {code:"MXN",name:"멕시코",    flag:"🇲🇽"},
+      {code:"PAB",name:"파나마 (USD고정)",flag:"🇵🇦", base:true},
+      {code:"BRL",name:"브라질",    flag:"🇧🇷"},
+      {code:"COP",name:"콜롬비아",  flag:"🇨🇴"},
+      {code:"PEN",name:"페루",      flag:"🇵🇪"},
+      {code:"CLP",name:"칠레",      flag:"🇨🇱"},
+      {code:"ARS",name:"아르헨티나",flag:"🇦🇷"},
+    ]
+  },
+  {
+    id:"eurcis",icon:"🇪🇺",name:"유럽/CIS",
+    countries:[
+      {code:"EUR",name:"유로존 (독/오/네/벨/스/포/프/이/그)",flag:"🇪🇺"},
+      {code:"GBP",name:"영국",      flag:"🇬🇧",invert:true},
+      {code:"SEK",name:"스웨덴",    flag:"🇸🇪"},
+      {code:"PLN",name:"폴란드",    flag:"🇵🇱"},
+      {code:"EUR",name:"라트비아 (EUR)",flag:"🇱🇻"},
+      {code:"CZK",name:"체코",      flag:"🇨🇿"},
+      {code:"HUF",name:"헝가리",    flag:"🇭🇺"},
+      {code:"RON",name:"루마니아",  flag:"🇷🇴"},
+      {code:"RUB",name:"러시아",    flag:"🇷🇺"},
+      {code:"KZT",name:"카자흐스탄",flag:"🇰🇿"},
+      {code:"UAH",name:"우크라이나",flag:"🇺🇦"},
+    ]
+  }
+];
+
+const CDN_KEY = {};
+REGIONS.forEach(r=>r.countries.forEach(c=>{
+  if(!c.base) CDN_KEY[c.code]=c.code.toLowerCase().slice(0,3);
+}));
+// Special cases
+CDN_KEY['AED']='aed'; CDN_KEY['SAR']='sar'; CDN_KEY['TRY']='try';
+CDN_KEY['EGP']='egp'; CDN_KEY['ZAR']='zar'; CDN_KEY['NGN']='ngn';
+CDN_KEY['MAD']='mad'; CDN_KEY['CAD']='cad'; CDN_KEY['LBP']='lbp';
+CDN_KEY['ILS']='ils'; CDN_KEY['TND']='tnd'; CDN_KEY['DZD']='dzd';
+CDN_KEY['IQD']='iqd'; CDN_KEY['MXN']='mxn'; CDN_KEY['BRL']='brl';
+CDN_KEY['ARS']='ars'; CDN_KEY['COP']='cop'; CDN_KEY['CLP']='clp';
+CDN_KEY['PEN']='pen'; CDN_KEY['EUR']='eur'; CDN_KEY['GBP']='gbp';
+CDN_KEY['PLN']='pln'; CDN_KEY['SEK']='sek'; CDN_KEY['CZK']='czk';
+CDN_KEY['RON']='ron'; CDN_KEY['RUB']='rub'; CDN_KEY['KZT']='kzt';
+CDN_KEY['UAH']='uah'; CDN_KEY['HUF']='huf'; CDN_KEY['KRW']='krw';
+CDN_KEY['AUD']='aud'; CDN_KEY['VND']='vnd'; CDN_KEY['TWD']='twd';
+CDN_KEY['IDR']='idr'; CDN_KEY['THB']='thb'; CDN_KEY['PHP']='php';
+CDN_KEY['MYR']='myr'; CDN_KEY['SGD']='sgd'; CDN_KEY['CNY']='cny';
+CDN_KEY['HKD']='hkd'; CDN_KEY['JPY']='jpy'; CDN_KEY['INR']='inr';
+
+// ── Default weights (모두 0, 사용자가 직접 입력) ──────────────────────────────
+const DEFAULT_WEIGHTS = {};
+REGIONS.forEach(r=>r.countries.forEach(c=>{ DEFAULT_WEIGHTS[c.code]=0; }));
+// 아시아 기본값 (기존 FX 앱 기준)
+Object.assign(DEFAULT_WEIGHTS,{
+  AUD:22,VND:14,TWD:12,IDR:12,THB:12,PHP:9,MYR:8,SGD:5,HKD:2,CNY:4,
+  KRW:0,JPY:0
+});
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let rates={}, yoyRates={cur:{},prev:{}}, ytdRates={cur:{},prev:{}};
+let loadingYoy=true, loadingYtd=true;
+let activeRegion='asia';
+let weights = {};
+
+const NOW=new Date(), CY=NOW.getFullYear(), PY=CY-1;
+const toLocalISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const prevWD = d => { const r=new Date(d); while(r.getDay()===0||r.getDay()===6) r.setDate(r.getDate()-1); return r; };
+const yearAgoISO      = toLocalISO(prevWD(new Date(PY, NOW.getMonth(), NOW.getDate())));
+const ytdStartISO     = toLocalISO(prevWD(new Date(CY,0,2)));
+const ytdEndISO       = toLocalISO(prevWD(NOW));
+const prevYtdStartISO = toLocalISO(prevWD(new Date(PY,0,2)));
+const prevYtdEndISO   = yearAgoISO;
+
+// ── Load/save weights ──────────────────────────────────────────────────────────
+function loadWeights() {
+  try {
+    const saved = localStorage.getItem('globalfx_weights');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      weights = { ...DEFAULT_WEIGHTS, ...parsed };
+    } else {
+      weights = { ...DEFAULT_WEIGHTS };
+    }
+  } catch { weights = { ...DEFAULT_WEIGHTS }; }
+}
+function saveWeights() {
+  try { localStorage.setItem('globalfx_weights', JSON.stringify(weights)); } catch {}
+}
+
+// ── API ────────────────────────────────────────────────────────────────────────
+async function cdnFetch(dateISO) {
+  const tag = dateISO || 'latest';
+  const urls = [
+    `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${tag}/v1/currencies/usd.json`,
+    `https://latest.currency-api.pages.dev/v1/currencies/usd.json`,
+  ];
+  for (const url of (dateISO ? [urls[0]] : urls)) {
+    try {
+      const r = await fetch(url, {cache:'no-store'});
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (!d.usd) continue;
+      const out = {};
+      REGIONS.forEach(rg => rg.countries.forEach(c => {
+        if (c.base) { out[c.code]=1; return; }
+        const v = d.usd[CDN_KEY[c.code]];
+        if (v) out[c.code]=v;
+      }));
+      return out;
+    } catch {}
+  }
+  return {};
+}
+async function cdnAvg(startISO, endISO) {
+  const dates=[], cur=new Date(startISO), end=new Date(endISO);
+  while(cur<=end){ dates.push(toLocalISO(prevWD(new Date(cur)))); cur.setDate(cur.getDate()+28); }
+  if(!dates.includes(endISO)) dates.push(endISO);
+  const sums={}, counts={};
+  for (const d of dates) {
+    try {
+      const row = await cdnFetch(d);
+      Object.entries(row).forEach(([code,val])=>{sums[code]=(sums[code]||0)+val;counts[code]=(counts[code]||0)+1;});
+    } catch {}
+  }
+  const out={};
+  Object.keys(sums).forEach(c=>{ out[c]=sums[c]/counts[c]; });
+  return out;
+}
+
+// ── Calc ───────────────────────────────────────────────────────────────────────
+function calcPct(cur, pre, invert) {
+  if (!cur||!pre||isNaN(cur)||isNaN(pre)) return null;
+  const c=invert?1/cur:cur, p=invert?1/pre:pre;
+  return invert ? (c-p)/p*100 : -(c-p)/p*100;
+}
+
+function fmtRate(code, rate, invert) {
+  if (!rate) return '—';
+  if (code==='USD') return '1.0000';
+  const v = invert?1/rate:rate;
+  if (['KRW','VND','IDR','NGN','ARS','COP','CLP','LBP','IQD','DZD','UZS','HUF','KZT'].includes(code))
+    return v.toLocaleString('ko-KR',{maximumFractionDigits:0});
+  if (['JPY','INR','THB','PHP','ZAR','MAD','MXN','BRL','PEN','EGP','TND','RUB','UAH'].includes(code))
+    return v.toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return v.toLocaleString('ko-KR',{minimumFractionDigits:4,maximumFractionDigits:4});
+}
+
+// Weighted avg FX impact for a region
+function calcRegionImpact(region, yoyOrYtd) {
+  const src = yoyOrYtd==='yoy' ? yoyRates : ytdRates;
+  let wSum=0, wTotal=0;
+  region.countries.forEach(c=>{
+    if (c.base) return;
+    const w = weights[c.code]||0;
+    if (w===0) return;
+    const pct = calcPct(src.cur[c.code], src.prev[c.code], c.invert);
+    if (pct===null) return;
+    wSum   += pct*w;
+    wTotal += w;
+  });
+  return wTotal>0 ? wSum/wTotal : null;
+}
+
+// ── Badge HTML ─────────────────────────────────────────────────────────────────
+function badge(pct, loading, size='sm') {
+  if (loading) return `<span style="color:var(--text3);font-size:9px">···</span>`;
+  if (pct===null||isNaN(pct)) return `<span class="badge b-na">—</span>`;
+  const up=pct>=0, abs=Math.abs(pct);
+  const fs = size==='lg'?'18px':size==='md'?'13px':'11px';
+  return `<span class="badge ${up?'b-up':'b-dn'}" style="font-size:${fs}">${up?'▲':'▼'} ${abs.toFixed(up&&abs<10||!up&&abs<10?1:1)}%</span>`;
+}
+
+function impactBadge(pct, loading, size='md') {
+  if (loading) return `<span style="color:var(--text3)">···</span>`;
+  if (pct===null||isNaN(pct)) return `<span style="color:var(--text3);font-size:12px">비중 입력 필요</span>`;
+  const up=pct>=0, abs=Math.abs(pct);
+  const col=up?'var(--green)':'var(--red)';
+  const bg=up?'var(--gbg)':'var(--rbg)';
+  const bdr=up?'var(--gb)':'var(--rb)';
+  const fs=size==='lg'?'22px':'16px';
+  return `<span style="display:inline-flex;align-items:center;gap:3px;background:${bg};border:1px solid ${bdr};color:${col};border-radius:3px;padding:3px 10px;font-size:${fs};font-weight:500">${up?'▲':'▼'} ${abs.toFixed(2)}%</span>`;
+}
+
+// ── Region total weight ────────────────────────────────────────────────────────
+function regionTotalWeight(region) {
+  return region.countries.reduce((s,c)=>s+(weights[c.code]||0),0);
+}
+
+// ── Render Summary Cards ───────────────────────────────────────────────────────
+function renderSummary() {
+  const html = REGIONS.map(r => {
+    const yoyImpact = calcRegionImpact(r,'yoy');
+    const ytdImpact = calcRegionImpact(r,'ytd');
+    const tw = regionTotalWeight(r);
+    const isActive = r.id===activeRegion;
+    return `
+      <div class="sum-card ${isActive?'active':''}" onclick="setRegion('${r.id}')">
+        <div class="sum-icon">${r.icon}</div>
+        <div class="sum-name">${r.name}</div>
+        <div class="sum-impact-row">
+          <div class="sum-impact-label">📅 금일기준 전년비</div>
+          <div class="sum-impact-val">${impactBadge(yoyImpact, loadingYoy, 'sm')}</div>
+        </div>
+        <div class="sum-impact-row">
+          <div class="sum-impact-label">📊 누적기준 전년비</div>
+          <div class="sum-impact-val">${impactBadge(ytdImpact, loadingYtd, 'sm')}</div>
+        </div>
+        <hr class="sum-divider"/>
+        <div class="sum-n">비중합 ${tw}% · ${r.countries.length}개국</div>
+      </div>`;
+  }).join('');
+  document.getElementById('summaryGrid').innerHTML = html;
+}
+
+// ── Render Region Detail ───────────────────────────────────────────────────────
+function renderDetail() {
+  const region = REGIONS.find(r=>r.id===activeRegion);
+  if (!region) { document.getElementById('regionDetail').innerHTML=''; return; }
+
+  const yoyImpact = calcRegionImpact(region,'yoy');
+  const ytdImpact = calcRegionImpact(region,'ytd');
+  const tw = regionTotalWeight(region);
+  const pct = Math.min(tw,100);
+  const fillCls = tw===100?'wt-ok':tw>100?'wt-over':'wt-low';
+
+  const rows = region.countries.map((c,i) => {
+    const rate    = rates[c.code];
+    const yoyPct  = calcPct(yoyRates.cur[c.code], yoyRates.prev[c.code], c.invert);
+    const ytdPct  = calcPct(ytdRates.cur[c.code], ytdRates.prev[c.code], c.invert);
+    const w       = weights[c.code]||0;
+    const rateStr = c.base ? '기준통화' :
+      (c.invert
+        ? `1 ${c.code} = ${fmtRate(c.code,rate,true)} USD`
+        : `1 USD = ${fmtRate(c.code,rate,false)} ${c.code}`);
+
+    return `
+      <div class="crow" style="animation-delay:${i*0.03}s">
+        <div class="cc">
+          <span class="fl">${c.flag}</span>
+          <div><span class="cn">${c.name}</span><span class="ck">${c.code}</span></div>
+        </div>
+        <div class="nc">
+          <div class="rate-val">${rate?fmtRate(c.code,rate,c.invert):'···'}</div>
+          <div class="rate-sub">${c.base?'USD':'vs USD'}</div>
+        </div>
+        <div class="nc">${badge(yoyPct, loadingYoy)}</div>
+        <div class="nc">${badge(ytdPct, loadingYtd)}</div>
+        <div class="nc" style="display:flex;align-items:center;justify-content:center;gap:2px">
+          <input class="w-input" type="text" inputmode="decimal"
+            value="${w||''}" placeholder="0"
+            id="wi-${c.code}"
+            onblur="onWeightChange('${c.code}',this.value)"
+            onkeydown="if(event.key==='Enter'){onWeightChange('${c.code}',this.value);this.blur();}"
+          /><span class="w-pct">%</span>
+        </div>
+        <div class="nc" style="font-size:11px;color:var(--text3)" id="contrib-yoy-${c.code}">
+          ${w>0&&yoyPct!==null ? (yoyPct*w/100>=0?'+':'')+(yoyPct*w/100).toFixed(2)+'%p' : '—'}
+        </div>
+        <div class="nc" style="font-size:11px;color:var(--text3)" id="contrib-ytd-${c.code}">
+          ${w>0&&ytdPct!==null ? (ytdPct*w/100>=0?'+':'')+(ytdPct*w/100).toFixed(2)+'%p' : '—'}
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('regionDetail').innerHTML = `
+    <div class="region-panel">
+      <div class="rp-header">
+        <div class="rp-left">
+          <span class="rp-icon">${region.icon}</span>
+          <span class="rp-name">${region.name}</span>
+        </div>
+        <div class="rp-impact">
+          <div>
+            <div class="rp-label">금일기준 전년비 FX Impact</div>
+            <div id="impact-yoy">${impactBadge(yoyImpact, loadingYoy, 'lg')}</div>
+          </div>
+          <div>
+            <div class="rp-label">누적기준 전년비 FX Impact</div>
+            <div id="impact-ytd">${impactBadge(ytdImpact, loadingYtd, 'lg')}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-bar">
+        <span>비중 합계: <strong id="wt-total" style="color:${tw===100?'var(--green)':tw>100?'var(--red)':'var(--gold)'}">${tw}%</strong></span>
+        <div class="wt-progress"><div id="wt-bar-fill" class="wt-fill ${fillCls}" style="width:${pct}%"></div></div>
+        <span id="wt-msg" style="font-size:10px">${tw===100?'✓ 완성':tw>100?'⚠ 초과':'입력 중'}</span>
+        <button onclick="resetWeights('${region.id}')" style="background:none;border:1px solid var(--border);color:var(--text3);font-family:inherit;font-size:9px;padding:2px 8px;border-radius:3px;cursor:pointer;margin-left:8px">초기화</button>
+      </div>
+
+      <div class="col-hdr">
+        <div class="ch">국가</div>
+        <div class="ch">현재 환율</div>
+        <div class="ch">전년비</div>
+        <div class="ch">YTD동기</div>
+        <div class="ch">매출비중</div>
+        <div class="ch">전년비 기여</div>
+        <div class="ch">YTD 기여</div>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+function onWeightChange(code, val) {
+  const parsed = parseFloat(String(val).replace(',','.')) || 0;
+  weights[code] = parsed;
+  saveWeights();
+  // Summary cards만 업데이트 (detail 재렌더 없음 → 포커스 유지)
+  renderSummary();
+  // Impact 수치만 부분 업데이트
+  updateImpactOnly();
+  // 기여도 셀만 업데이트
+  updateContribCells();
+}
+
+function updateImpactOnly() {
+  const region = REGIONS.find(r=>r.id===activeRegion);
+  if (!region) return;
+  const yoyImpact = calcRegionImpact(region,'yoy');
+  const ytdImpact = calcRegionImpact(region,'ytd');
+  const tw = regionTotalWeight(region);
+  const el1 = document.getElementById('impact-yoy');
+  const el2 = document.getElementById('impact-ytd');
+  const elTw = document.getElementById('wt-total');
+  const elBar = document.getElementById('wt-bar-fill');
+  const elMsg = document.getElementById('wt-msg');
+  if (el1) el1.innerHTML = impactBadge(yoyImpact, loadingYoy, 'lg');
+  if (el2) el2.innerHTML = impactBadge(ytdImpact, loadingYtd, 'lg');
+  if (elTw) {
+    elTw.textContent = tw + '%';
+    elTw.style.color = tw===100?'var(--green)':tw>100?'var(--red)':'var(--gold)';
+  }
+  if (elBar) {
+    const pct = Math.min(tw,100);
+    elBar.style.width = pct+'%';
+    elBar.className = 'wt-fill ' + (tw===100?'wt-ok':tw>100?'wt-over':'wt-low');
+  }
+  if (elMsg) elMsg.textContent = tw===100?'✓ 완성':tw>100?'⚠ 초과':'입력 중';
+}
+
+function updateContribCells() {
+  const region = REGIONS.find(r=>r.id===activeRegion);
+  if (!region) return;
+  region.countries.forEach(c => {
+    const w = weights[c.code]||0;
+    const yoyPct = calcPct(yoyRates.cur[c.code], yoyRates.prev[c.code], c.invert);
+    const ytdPct = calcPct(ytdRates.cur[c.code], ytdRates.prev[c.code], c.invert);
+    const elY = document.getElementById('contrib-yoy-'+c.code);
+    const elT = document.getElementById('contrib-ytd-'+c.code);
+    if (elY) elY.textContent = w>0&&yoyPct!==null ? (yoyPct*w/100>=0?'+':'')+(yoyPct*w/100).toFixed(2)+'%p' : '—';
+    if (elT) elT.textContent = w>0&&ytdPct!==null ? (ytdPct*w/100>=0?'+':'')+(ytdPct*w/100).toFixed(2)+'%p' : '—';
+  });
+}
+
+function resetWeights(regionId) {
+  const region = REGIONS.find(r=>r.id===regionId);
+  region.countries.forEach(c=>{ weights[c.code]=0; });
+  saveWeights();
+  renderSummary();
+  renderDetail();
+}
+
+function setRegion(id) {
+  activeRegion = id;
+  renderSummary();
+  renderDetail();
+}
+
+// ── Fetch ──────────────────────────────────────────────────────────────────────
+async function fetchAll(isRefresh=false) {
+  const btn = document.getElementById('refreshBtn');
+  if (isRefresh) { btn.disabled=true; btn.textContent='⟳ 로딩중...'; }
+  loadingYoy=true; loadingYtd=true;
+
+  try {
+    const current = await cdnFetch(null);
+    if (!Object.keys(current).length) throw new Error();
+    rates = current;
+    document.getElementById('status').textContent =
+      new Date().toLocaleTimeString('ko-KR')+' · fawazahmed0';
+    renderSummary(); renderDetail();
+  } catch {
+    document.getElementById('status').textContent = '데이터 로드 실패';
+    if (isRefresh) { btn.disabled=false; btn.textContent='⟳ 새로고침'; }
+    return;
+  }
+  if (isRefresh) { btn.disabled=false; btn.textContent='⟳ 새로고침'; }
+
+  ;(async()=>{
+    try {
+      const [cp,pp]=await Promise.all([cdnFetch(null),cdnFetch(yearAgoISO)]);
+      yoyRates={cur:cp,prev:pp};
+    } catch {}
+    loadingYoy=false;
+    renderSummary(); renderDetail();
+  })();
+
+  ;(async()=>{
+    try {
+      const ca=await cdnAvg(ytdStartISO,ytdEndISO);
+      const pa=await cdnAvg(prevYtdStartISO,prevYtdEndISO);
+      ytdRates={cur:ca,prev:pa};
+    } catch {}
+    loadingYtd=false;
+    renderSummary(); renderDetail();
+  })();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadWeights();
+renderSummary();
+renderDetail();
+fetchAll(false);
+</script>
+</body>
+</html>
