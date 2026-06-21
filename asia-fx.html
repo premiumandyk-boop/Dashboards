@@ -201,12 +201,13 @@ const CURRENCIES = [
 ];
 const CDN_KEY = {KRW:"krw",AUD:"aud",NZD:"nzd",INR:"inr",VND:"vnd",TWD:"twd",IDR:"idr",THB:"thb",PHP:"php",MYR:"myr",SGD:"sgd",CNY:"cny",HKD:"hkd",JPY:"jpy"};
 
-let rates={}, yoyRates={cur:{},prev:{}}, ytdRates={cur:{},prev:{}};
-let loadingYoy=true, loadingYtd=true;
+let rates={}, yoyRates={cur:{},prev:{}}, ytdRates={cur:{},prev:{}}, mtdRates={cur:{},prev:{}};
+let loadingYoy=true, loadingYtd=true, loadingMtd=true;
 
 const toISO = d => d.toISOString().split("T")[0];
 const toLocalISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const prevWD = d => { const r=new Date(d); while(r.getDay()===0||r.getDay()===6) r.setDate(r.getDate()-1); return r; };
+const nextWD = d => { const r=new Date(d); while(r.getDay()===0||r.getDay()===6) r.setDate(r.getDate()+1); return r; };
 
 // 선택된 날짜 기반 동적 변수
 let selectedDate = prevWD(new Date());
@@ -214,17 +215,22 @@ let selectedDate = prevWD(new Date());
 function getDateVars(base) {
   const d  = new Date(base);
   const CY = d.getFullYear(), PY = CY - 1;
+  const CM = d.getMonth();
   return {
-    CY, PY,
-    yearAgoISO:      toLocalISO(prevWD(new Date(PY, d.getMonth(), d.getDate()))),
-    ytdStartISO:     toLocalISO(prevWD(new Date(CY, 0, 2))),
-    ytdEndISO:       toLocalISO(prevWD(new Date(d))),
-    prevYtdStartISO: toLocalISO(prevWD(new Date(PY, 0, 2))),
-    prevYtdEndISO:   toLocalISO(prevWD(new Date(PY, d.getMonth(), d.getDate()))),
+    CY, PY, CM,
+    yearAgoISO:       toLocalISO(prevWD(new Date(PY, CM, d.getDate()))),
+    ytdStartISO:      toLocalISO(prevWD(new Date(CY, 0, 2))),
+    ytdEndISO:        toLocalISO(prevWD(new Date(d))),
+    prevYtdStartISO:  toLocalISO(prevWD(new Date(PY, 0, 2))),
+    prevYtdEndISO:    toLocalISO(prevWD(new Date(PY, CM, d.getDate()))),
+    mtdStartISO:      toLocalISO(nextWD(new Date(CY, CM, 1))),
+    mtdEndISO:        toLocalISO(prevWD(new Date(d))),
+    prevMtdStartISO:  toLocalISO(nextWD(new Date(PY, CM, 1))),
+    prevMtdEndISO:    toLocalISO(prevWD(new Date(PY, CM, d.getDate()))),
   };
 }
 
-let { CY, PY, yearAgoISO, ytdStartISO, ytdEndISO, prevYtdStartISO, prevYtdEndISO } = getDateVars(selectedDate);
+let { CY, PY, CM, yearAgoISO, ytdStartISO, ytdEndISO, prevYtdStartISO, prevYtdEndISO, mtdStartISO, mtdEndISO, prevMtdStartISO, prevMtdEndISO } = getDateVars(selectedDate);
 
 function fmtRate(code, rate, invert) {
   if (!rate) return "—";
@@ -297,10 +303,10 @@ const WEIGHTS = {
 };
 
 function renderFxImpact() {
-  // 전년비(YoY) 기준 가중평균 환 영향 계산
   const rows = [];
   let yoyWsum = 0, yoyWtotal = 0;
   let ytdWsum = 0, ytdWtotal = 0;
+  let mtdWsum = 0, mtdWtotal = 0;
 
   Object.entries(WEIGHTS).forEach(([code, weight]) => {
     const c = CURRENCIES.find(x => x.code === code);
@@ -308,28 +314,18 @@ function renderFxImpact() {
 
     const yoyPct = calcPct(yoyRates.cur[code], yoyRates.prev[code], c.invert);
     const ytdPct = calcPct(ytdRates.cur[code], ytdRates.prev[code], c.invert);
+    const mtdPct = calcPct(mtdRates.cur[code], mtdRates.prev[code], c.invert);
 
-    if (yoyPct !== null && !isNaN(yoyPct)) {
-      yoyWsum   += yoyPct * weight;
-      yoyWtotal += weight;
-    }
-    if (ytdPct !== null && !isNaN(ytdPct)) {
-      ytdWsum   += ytdPct * weight;
-      ytdWtotal += weight;
-    }
+    if (yoyPct !== null && !isNaN(yoyPct)) { yoyWsum += yoyPct * weight; yoyWtotal += weight; }
+    if (ytdPct !== null && !isNaN(ytdPct)) { ytdWsum += ytdPct * weight; ytdWtotal += weight; }
+    if (mtdPct !== null && !isNaN(mtdPct)) { mtdWsum += mtdPct * weight; mtdWtotal += weight; }
 
-    rows.push({ code, flag: c.flag, name: c.name, weight, yoyPct, ytdPct });
+    rows.push({ code, flag: c.flag, name: c.name, weight, yoyPct, ytdPct, mtdPct });
   });
 
   const yoyAvg = yoyWtotal > 0 ? yoyWsum / yoyWtotal : null;
   const ytdAvg = ytdWtotal > 0 ? ytdWsum / ytdWtotal : null;
-
-  const fmtImpact = (v) => {
-    if (v === null || isNaN(v)) return '<span style="color:var(--text3)">—</span>';
-    const up = v >= 0;
-    const col = up ? 'var(--green)' : 'var(--red)';
-    return `<span style="color:${col};font-weight:500">${up?'▲':'▼'} ${Math.abs(v).toFixed(1)}%</span>`;
-  };
+  const mtdAvg = mtdWtotal > 0 ? mtdWsum / mtdWtotal : null;
 
   const summaryBadge = (v, loading) => {
     if (loading) return `<span style="color:var(--text3);font-size:13px">···</span>`;
@@ -341,11 +337,13 @@ function renderFxImpact() {
     return `<span style="display:inline-flex;align-items:center;gap:4px;background:${bg};border:1px solid ${bdr};color:${col};border-radius:3px;padding:4px 12px;font-size:16px;font-weight:500">${up?'▲':'▼'} ${Math.abs(v).toFixed(2)}%</span>`;
   };
 
-  // 국가별 바 차트 (비중 기준)
+  const mmLabel = String(CM+1).padStart(2,'0');
+
   const barRows = rows.map(r => {
-    const barW = r.weight; // 비중 = 바 너비
+    const barW = r.weight;
     const yoyCol = r.yoyPct === null ? 'var(--text3)' : r.yoyPct >= 0 ? 'var(--green)' : 'var(--red)';
     const ytdCol = r.ytdPct === null ? 'var(--text3)' : r.ytdPct >= 0 ? 'var(--green)' : 'var(--red)';
+    const mtdCol = r.mtdPct === null ? 'var(--text3)' : r.mtdPct >= 0 ? 'var(--green)' : 'var(--red)';
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
         <div style="width:26px;text-align:center;font-size:18px">${r.flag}</div>
@@ -359,6 +357,9 @@ function renderFxImpact() {
         </div>
         <div style="width:68px;text-align:right;font-size:11px;color:${ytdCol}">
           ${r.ytdPct===null||isNaN(r.ytdPct) ? '—' : (r.ytdPct>=0?'▲':'▼')+' '+Math.abs(r.ytdPct).toFixed(1)+'%'}
+        </div>
+        <div style="width:68px;text-align:right;font-size:11px;color:${mtdCol}">
+          ${r.mtdPct===null||isNaN(r.mtdPct) ? '—' : (r.mtdPct>=0?'▲':'▼')+' '+Math.abs(r.mtdPct).toFixed(1)+'%'}
         </div>
       </div>`;
   }).join('');
@@ -376,8 +377,8 @@ function renderFxImpact() {
         </div>
       </div>
 
-      <!-- 요약 카드 2개 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)">
+      <!-- 요약 카드 3개 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)">
         <div style="background:var(--bg2);padding:16px 20px;text-align:center">
           <div style="font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">
             전년 대비 환 영향
@@ -392,6 +393,13 @@ function renderFxImpact() {
           ${summaryBadge(ytdAvg, loadingYtd)}
           <div style="font-size:10px;color:var(--text3);margin-top:6px">${CY}.01~오늘 vs ${PY} 동기</div>
         </div>
+        <div style="background:var(--bg2);padding:16px 20px;text-align:center">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">
+            MTD 동기 환 영향
+          </div>
+          ${summaryBadge(mtdAvg, loadingMtd)}
+          <div style="font-size:10px;color:var(--text3);margin-top:6px">${CY}.${mmLabel}~오늘 vs ${PY} 동기</div>
+        </div>
       </div>
 
       <!-- 국가별 명세 -->
@@ -403,6 +411,7 @@ function renderFxImpact() {
           <div style="flex:1;font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">비중 분포</div>
           <div style="width:68px;font-size:9px;color:var(--text3);letter-spacing:1px;text-align:right;text-transform:uppercase">전년비</div>
           <div style="width:68px;font-size:9px;color:var(--text3);letter-spacing:1px;text-align:right;text-transform:uppercase">YTD동기</div>
+          <div style="width:68px;font-size:9px;color:var(--text3);letter-spacing:1px;text-align:right;text-transform:uppercase">MTD동기</div>
         </div>
         ${barRows}
       </div>
@@ -424,8 +433,8 @@ function renderGrid() {
 
   let html = `
     <div class="col-headers">
-      <div class="col-header"><span class="col-label">전년비</span><span class="col-label">YTD동기</span></div>
-      <div class="col-header"><span class="col-label">전년비</span><span class="col-label">YTD동기</span></div>
+      <div class="col-header"><span class="col-label">전년비</span><span class="col-label">YTD동기</span><span class="col-label">MTD동기</span></div>
+      <div class="col-header"><span class="col-label">전년비</span><span class="col-label">YTD동기</span><span class="col-label">MTD동기</span></div>
     </div>
     <div class="usd-row">
       <span style="font-size:26px;line-height:1">🇺🇸</span>
@@ -441,6 +450,7 @@ function renderGrid() {
     const rate   = rates[c.code];
     const yoyPct = calcPct(yoyRates.cur[c.code], yoyRates.prev[c.code], c.invert);
     const ytdPct = calcPct(ytdRates.cur[c.code], ytdRates.prev[c.code], c.invert);
+    const mtdPct = calcPct(mtdRates.cur[c.code], mtdRates.prev[c.code], c.invert);
     const rateStr = c.invert
       ? `1 ${c.code} = <span class="rate-val">${fmtRate(c.code,rate,true)}</span> USD`
       : `1 USD = <span class="rate-val">${fmtRate(c.code,rate)}</span> ${c.code}`;
@@ -456,13 +466,15 @@ function renderGrid() {
         <div class="card-body">
           <div class="card-top">
             <div><span class="card-name">${c.name}</span><span class="card-code">${c.code}</span></div>
-            <div class="badges">${badgeHTML(yoyPct,loadingYoy)}${badgeHTML(ytdPct,loadingYtd)}</div>
+            <div class="badges">${badgeHTML(yoyPct,loadingYoy)}${badgeHTML(ytdPct,loadingYtd)}${badgeHTML(mtdPct,loadingMtd)}</div>
           </div>
           <div class="card-rate">${rateStr}</div>
           ${convStr}
         </div>
       </div>`;
   });
+
+  const mmLabel = String(CM+1).padStart(2,'0');
 
   html += `</div>
     <div class="legend">
@@ -472,6 +484,8 @@ function renderGrid() {
       <span>전년비: 오늘 vs ${yearAgoISO}</span>
       <span class="legend-sep">│</span>
       <span>YTD: ${CY}.01~오늘 평균 vs ${PY} 동기 평균</span>
+      <span class="legend-sep">│</span>
+      <span>MTD: ${CY}.${mmLabel}.01~오늘 평균 vs ${PY} 동기 평균</span>
     </div>
 
     ${renderFxImpact()}
@@ -499,8 +513,8 @@ function initDatePicker() {
 function onDateChange(val) {
   if (!val) return;
   selectedDate = prevWD(new Date(val));
-  rates={}; yoyRates={cur:{},prev:{}}; ytdRates={cur:{},prev:{}};
-  loadingYoy=true; loadingYtd=true;
+  rates={}; yoyRates={cur:{},prev:{}}; ytdRates={cur:{},prev:{}}; mtdRates={cur:{},prev:{}};
+  loadingYoy=true; loadingYtd=true; loadingMtd=true;
   fetchAll(false);
 }
 
@@ -508,18 +522,18 @@ function resetToToday() {
   selectedDate = prevWD(new Date());
   const today = toLocalISO(selectedDate);
   document.getElementById('datePicker').value = today;
-  rates={}; yoyRates={cur:{},prev:{}}; ytdRates={cur:{},prev:{}};
-  loadingYoy=true; loadingYtd=true;
+  rates={}; yoyRates={cur:{},prev:{}}; ytdRates={cur:{},prev:{}}; mtdRates={cur:{},prev:{}};
+  loadingYoy=true; loadingYtd=true; loadingMtd=true;
   fetchAll(false);
 }
 
 async function fetchAll(isRefresh) {
   const btn = document.getElementById('refreshBtn');
   if (isRefresh) { btn.disabled=true; btn.textContent='⟳ 업데이트 중...'; }
-  loadingYoy=true; loadingYtd=true;
+  loadingYoy=true; loadingYtd=true; loadingMtd=true;
 
   // 날짜 변수 갱신
-  ({ CY, PY, yearAgoISO, ytdStartISO, ytdEndISO, prevYtdStartISO, prevYtdEndISO } = getDateVars(selectedDate));
+  ({ CY, PY, CM, yearAgoISO, ytdStartISO, ytdEndISO, prevYtdStartISO, prevYtdEndISO, mtdStartISO, mtdEndISO, prevMtdStartISO, prevMtdEndISO } = getDateVars(selectedDate));
   const isToday = toLocalISO(selectedDate) === toLocalISO(prevWD(new Date()));
   const fetchDateISO = isToday ? null : toLocalISO(selectedDate);
 
@@ -528,7 +542,7 @@ async function fetchAll(isRefresh) {
     if (!Object.keys(current).length) throw new Error();
     rates = current;
     const dateLabel = isToday ? '오늘' : toLocalISO(selectedDate);
-    updateStatus(dateLabel + ' · fawazahmed0', '전년비 · YTD 로딩중...');
+    updateStatus(dateLabel + ' · fawazahmed0', '전년비 · YTD · MTD 로딩중...');
     const sk = document.getElementById('skeleton');
     if (sk) sk.remove();
     renderGrid();
@@ -546,7 +560,7 @@ async function fetchAll(isRefresh) {
     } catch {}
     loadingYoy = false;
     const dateLabel = isToday ? '오늘' : toLocalISO(selectedDate);
-    updateStatus(dateLabel + ' · fawazahmed0', loadingYtd ? 'YTD 로딩중...' : '');
+    updateStatus(dateLabel + ' · fawazahmed0', (loadingYtd||loadingMtd) ? 'YTD · MTD 로딩중...' : '');
     renderGrid();
   })();
 
@@ -557,6 +571,18 @@ async function fetchAll(isRefresh) {
       ytdRates = {cur:curAvg, prev:prevAvg};
     } catch {}
     loadingYtd = false;
+    const dateLabel = isToday ? '오늘' : toLocalISO(selectedDate);
+    updateStatus(dateLabel + ' · fawazahmed0', loadingMtd ? 'MTD 로딩중...' : '');
+    renderGrid();
+  })();
+
+  ;(async () => {
+    try {
+      const curAvg  = await cdnAvg(mtdStartISO, mtdEndISO);
+      const prevAvg = await cdnAvg(prevMtdStartISO, prevMtdEndISO);
+      mtdRates = {cur:curAvg, prev:prevAvg};
+    } catch {}
+    loadingMtd = false;
     const dateLabel = isToday ? '오늘' : toLocalISO(selectedDate);
     updateStatus(dateLabel + ' · fawazahmed0');
     renderGrid();
