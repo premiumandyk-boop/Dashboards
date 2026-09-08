@@ -163,6 +163,7 @@
         />
         <button class="rbtn" id="todayBtn" onclick="resetToToday()" style="padding:7px 14px;font-size:10px;">오늘</button>
         <button class="rbtn" id="refreshBtn" onclick="fetchAll(true)">⟳ 새로고침</button>
+        <button class="rbtn" onclick="downloadHTML()" style="padding:7px 14px;font-size:10px;">↓ 저장</button>
       </div>
     </div>
   </div>
@@ -849,6 +850,18 @@ document.getElementById('usdInput').addEventListener('input', () => {
 
 initDatePicker();
 fetchAll(false);
+
+function downloadHTML() {
+  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = toLocalISO(selectedDate).replace(/-/g,'');
+  a.href     = url;
+  a.download = `asia-fx-${date}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 </script>
 </body>
 </html>
