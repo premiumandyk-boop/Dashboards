@@ -208,6 +208,7 @@ const toISO = d => d.toISOString().split("T")[0];
 const toLocalISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const prevWD = d => { const r=new Date(d); while(r.getDay()===0||r.getDay()===6) r.setDate(r.getDate()-1); return r; };
 const nextWD = d => { const r=new Date(d); while(r.getDay()===0||r.getDay()===6) r.setDate(r.getDate()+1); return r; };
+const clamp  = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
 
 // 선택된 날짜 기반 동적 변수
 let selectedDate = prevWD(new Date());
@@ -293,6 +294,25 @@ function badgeHTML(pct, loading) {
   const up=pct>=0, abs=Math.abs(pct).toFixed(1);
   return `<span class="badge ${up?'badge-up':'badge-down'}">${up?'▲':'▼'} ${abs}%</span>`;
 }
+
+// ── 3-Factor 모델 통화별 가중치 ─────────────────────────────
+// Global USD / 금리·정책 / 로컬흐름·펀더멘털
+const FX_OUTLOOK_WEIGHTS = {
+  KRW: { global:0.40, policy:0.20, flow:0.40 }, // 외국인flow·반도체수출, 금리차 설명력 제한적
+  JPY: { global:0.30, policy:0.40, flow:0.30 }, // BOJ정상화·carry unwind 최우선
+  IDR: { global:0.35, policy:0.35, flow:0.30 },
+  PHP: { global:0.35, policy:0.35, flow:0.30 },
+  INR: { global:0.35, policy:0.35, flow:0.30 },
+  CNY: { global:0.30, policy:0.25, flow:0.45 }, // PBOC fixing·자본흐름·중국경기
+  AUD: { global:0.30, policy:0.35, flow:0.35 }, // commodity·China cycle
+  NZD: { global:0.30, policy:0.35, flow:0.35 },
+  VND: { global:0.35, policy:0.35, flow:0.30 },
+  TWD: { global:0.35, policy:0.35, flow:0.30 },
+  THB: { global:0.35, policy:0.35, flow:0.30 },
+  MYR: { global:0.35, policy:0.35, flow:0.30 },
+  SGD: { global:0.35, policy:0.35, flow:0.30 },
+  HKD: { global:0.35, policy:0.35, flow:0.30 },
+};
 
 // ── 국가별 매출 비중 (AK 설정) ──────────────────────────────
 // 한국·일본·인도 제외, 10개국 합계 100%
@@ -438,6 +458,225 @@ function renderFxImpact() {
     </div>`;
 }
 
+// ── FX OUTLOOK: 3-Factor 추세 모델 ──────────────────────────
+function computeOutlook() {
+  if (loadingYoy || loadingYtd || loadingMtd) return null;
+
+  // 바스켓 평균 YoY → USD 광역 강도 프록시
+  let bSum = 0, bCnt = 0;
+  CURRENCIES.forEach(c => {
+    const y = calcPct(yoyRates.cur[c.code], yoyRates.prev[c.code], c.invert);
+    if (y !== null && !isNaN(y)) { bSum += y; bCnt++; }
+  });
+  const basketYoY = bCnt > 0 ? bSum / bCnt : 0;
+
+  return CURRENCIES.map(c => {
+    const w   = FX_OUTLOOK_WEIGHTS[c.code] || { global:0.34, policy:0.33, flow:0.33 };
+    const yoy = calcPct(yoyRates.cur[c.code], yoyRates.prev[c.code], c.invert);
+    const ytd = calcPct(ytdRates.cur[c.code], ytdRates.prev[c.code], c.invert);
+    const mtd = calcPct(mtdRates.cur[c.code], mtdRates.prev[c.code], c.invert);
+
+    if ([yoy,ytd,mtd].some(v => v===null||isNaN(v))) {
+      return { code:c.code, flag:c.flag, name:c.name, invert:c.invert,
+               rate:rates[c.code], yoy, ytd, mtd, score:null };
+    }
+
+    // Factor 1 — Global USD: 이 통화의 YoY vs 바스켓 평균, USD 광역 방향 반영
+    const relStrength = yoy - basketYoY;
+    const globalScore = clamp(50 + basketYoY * 2.5 + relStrength * 1.5, 0, 100);
+
+    // Factor 2 — 금리·정책: MTD vs YTD 모멘텀 차이 (단기 정책·금리 민감도 프록시)
+    const policyScore = clamp(50 + (mtd - ytd) * 5, 0, 100);
+
+    // Factor 3 — 로컬 흐름: YoY 방향·강도, YTD 일치 여부 보너스
+    const sameDir = (yoy >= 0) === (ytd >= 0);
+    const flowScore = clamp(50 + yoy * 3.5 + (sameDir ? 5 : -5), 0, 100);
+
+    const composite = w.global * globalScore + w.policy * policyScore + w.flow * flowScore;
+    // 1M: 단기 모멘텀 우선
+    const score1m = clamp(0.25*globalScore + 0.45*policyScore + 0.30*flowScore, 0, 100);
+
+    const sig = s => s > 58 ? '▲' : s < 42 ? '▼' : '→';
+    const signal1m = sig(score1m), signal3m = sig(composite);
+
+    const dir = s => s > 55 ? 1 : s < 45 ? -1 : 0;
+    const agrees = [globalScore,policyScore,flowScore].filter(s => dir(s)===dir(composite)).length;
+    const confidence = agrees === 3 ? 'HIGH' : agrees === 2 ? 'MED' : 'LOW';
+
+    return {
+      code:c.code, flag:c.flag, name:c.name, invert:c.invert, rate:rates[c.code],
+      yoy, ytd, mtd,
+      factors:{ global:Math.round(globalScore), policy:Math.round(policyScore), flow:Math.round(flowScore) },
+      composite:Math.round(composite), score1m:Math.round(score1m),
+      signal1m, signal3m, confidence,
+    };
+  });
+}
+
+function renderFxOutlook() {
+  const data = computeOutlook();
+  const loading = loadingYoy || loadingYtd || loadingMtd;
+
+  const pressureBar = (score, w=64) => {
+    const dev  = score - 50;
+    const fill = Math.abs(dev) * 2; // 0~100% of half-bar
+    const col  = dev > 0 ? 'var(--green)' : dev < 0 ? 'var(--red)' : 'transparent';
+    const half = w / 2;
+    const filledPx = Math.round(half * fill / 100);
+    return `<div style="display:flex;width:${w}px;height:5px;border-radius:3px;overflow:hidden;background:var(--bg3)">
+      <div style="width:${half}px;display:flex;justify-content:flex-end">
+        ${dev < 0 ? `<div style="width:${filledPx}px;background:${col}"></div>` : ''}
+      </div>
+      <div style="width:1px;background:var(--border-h);flex-shrink:0"></div>
+      <div style="width:${half}px">
+        ${dev > 0 ? `<div style="width:${filledPx}px;background:${col}"></div>` : ''}
+      </div>
+    </div>`;
+  };
+
+  const scoreBar = (label, score) => `
+    <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+      <span style="font-size:8px;color:var(--text3);width:28px;text-align:right;flex-shrink:0">${label}</span>
+      ${pressureBar(score)}
+      <span style="font-size:8px;color:${score>55?'var(--green)':score<45?'var(--red)':'var(--text3)'};width:22px">${score}</span>
+    </div>`;
+
+  const sigCol  = s => s==='▲'?'var(--green)':s==='▼'?'var(--red)':'var(--text3)';
+  const confCol = c => c==='HIGH'?'var(--green)':c==='MED'?'var(--gold)':'var(--text3)';
+  const confBg  = c => c==='HIGH'?'var(--green-bg)':c==='MED'?'rgba(212,168,83,0.12)':'var(--bg3)';
+  const confBdr = c => c==='HIGH'?'var(--green-b)':c==='MED'?'var(--gold-dim)':'var(--border)';
+
+  // Forecast 3M FX Impact (매출 비중 통화만)
+  let fWsum=0, fWtotal=0;
+  if (data) {
+    data.forEach(d => {
+      const w = WEIGHTS[d.code];
+      if (!w || d.composite == null) return;
+      fWsum   += (d.composite - 50) / 50 * w; // -1~+1 × weight
+      fWtotal += w;
+    });
+  }
+  const fcastRaw  = fWtotal > 0 ? fWsum / fWtotal : 0;
+  const fcastPct  = (fcastRaw * 2.5).toFixed(1); // 최대 ±2.5% 스케일
+  const fcastDir  = fcastRaw >= 0.05 ? '▲' : fcastRaw <= -0.05 ? '▼' : '→';
+  const fcastCol  = fcastRaw >= 0 ? 'var(--green)' : 'var(--red)';
+
+  const rows = loading
+    ? '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px">···  로딩 중</div>'
+    : (data||[]).map(d => {
+        const rateStr = d.rate ? (d.invert ? fmtRate(d.code,d.rate,true)+' USD' : fmtRate(d.code,d.rate)+' '+d.code) : '—';
+        if (!d.factors) return `
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+            <div style="width:22px;font-size:16px;text-align:center">${d.flag}</div>
+            <div style="width:62px;font-size:11px;color:var(--text2)">${d.name}</div>
+            <div style="flex:1;font-size:10px;color:var(--text3)">데이터 없음</div>
+          </div>`;
+        return `
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+            <div style="width:22px;font-size:16px;text-align:center">${d.flag}</div>
+            <div style="width:62px">
+              <div style="font-size:11px;color:var(--text2)">${d.name}</div>
+              <div style="font-size:9px;color:var(--text3)">${d.code}</div>
+            </div>
+            <div style="width:78px;font-size:10px;color:var(--gold);text-align:right">${rateStr}</div>
+            <div style="flex:1;min-width:130px">
+              ${scoreBar('USD',  d.factors.global)}
+              ${scoreBar('금리', d.factors.policy)}
+              ${scoreBar('흐름', d.factors.flow)}
+            </div>
+            <div style="width:34px;text-align:center">
+              <div style="font-size:14px;font-weight:600;color:${sigCol(d.signal1m)}">${d.signal1m}</div>
+              <div style="font-size:8px;color:var(--text3)">1M</div>
+            </div>
+            <div style="width:34px;text-align:center">
+              <div style="font-size:14px;font-weight:600;color:${sigCol(d.signal3m)}">${d.signal3m}</div>
+              <div style="font-size:8px;color:var(--text3)">3M</div>
+            </div>
+            <div style="width:38px;text-align:center">
+              <div style="font-size:9px;font-weight:600;padding:2px 4px;border-radius:3px;
+                background:${confBg(d.confidence)};border:1px solid ${confBdr(d.confidence)};
+                color:${confCol(d.confidence)}">${d.confidence}</div>
+            </div>
+          </div>`;
+      }).join('');
+
+  return `
+    <div style="margin-top:20px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+
+      <!-- 헤더 -->
+      <div style="padding:16px 20px 12px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--gold);margin-bottom:2px">
+              FX OUTLOOK
+            </div>
+            <div style="font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase">
+              3-Factor 추세 모델 · 14개 통화 · 통화별 가중치 차등 적용
+            </div>
+          </div>
+          <div style="font-size:9px;color:var(--text3);line-height:1.8;text-align:right">
+            KRW: <span style="color:var(--text2)">USD 40% · 로컬 40% · 금리 20%</span><br>
+            JPY: <span style="color:var(--text2)">금리 40% · USD 30% · 로컬 30%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 컬럼 헤더 -->
+      <div style="padding:0 20px">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="width:22px"></div>
+          <div style="width:62px;font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">통화</div>
+          <div style="width:78px;font-size:9px;color:var(--text3);letter-spacing:1px;text-align:right">현재환율</div>
+          <div style="flex:1;font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">FX PRESSURE&nbsp;&nbsp;←약세·강세→&nbsp;&nbsp;(USD · 금리 · 흐름)</div>
+          <div style="width:34px;font-size:9px;color:var(--text3);text-align:center">1M</div>
+          <div style="width:34px;font-size:9px;color:var(--text3);text-align:center">3M</div>
+          <div style="width:38px;font-size:9px;color:var(--text3);text-align:center">신뢰도</div>
+        </div>
+      </div>
+
+      <!-- 통화별 행 -->
+      <div style="padding:0 20px 4px;overflow-x:auto">
+        <div style="min-width:520px">
+          ${rows}
+        </div>
+      </div>
+
+      <!-- Actual YTD → Forecast 3M -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-top:1px solid var(--border);margin-top:8px">
+        <div style="background:var(--bg2);padding:14px 20px">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Actual YTD FX Impact</div>
+          <div style="font-size:10px;color:var(--text3)">위 ASIA FX IMPACT 섹션 YTD 수치 참조</div>
+        </div>
+        <div style="background:var(--bg2);padding:14px 20px;text-align:center">
+          <div style="font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Forecast Next 3M FX Impact</div>
+          ${loading
+            ? `<span style="color:var(--text3);font-size:13px">···</span>`
+            : `<div style="display:inline-flex;align-items:center;gap:4px;font-size:15px;font-weight:600;color:${fcastCol}">
+                ${fcastDir} ${Math.abs(fcastPct)}%
+                <span style="font-size:10px;color:var(--text3)">추정</span>
+              </div>`
+          }
+          <div style="font-size:9px;color:var(--text3);margin-top:4px">매출비중 가중 3M 방향신호 기반</div>
+        </div>
+      </div>
+
+      <!-- 정확도 & 면책 -->
+      <div style="padding:12px 20px;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="font-size:10px;color:var(--text3);line-height:1.8">
+            ▲ 강세 예상 &nbsp;▼ 약세 예상 &nbsp;→ 중립 &nbsp;·&nbsp;
+            FX Pressure: 50 기준 우측=강세압력 / 좌측=약세압력<br>
+            추세 기반 모델 (실제 금리·자본흐름 데이터 미반영) · 참고용
+          </div>
+          <div style="font-size:10px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:6px 12px;color:var(--text3);white-space:nowrap">
+            3M Direction Hit Rate<br>
+            <span style="color:var(--gold);font-size:12px;font-weight:500">백테스트 미적용</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderGrid() {
   const amount = parseFloat(document.getElementById('usdInput').value) || 0;
   const content = document.getElementById('content');
@@ -502,6 +741,8 @@ function renderGrid() {
     </div>
 
     ${renderFxImpact()}
+
+    ${renderFxOutlook()}
 
     <div class="footer">참고용 환율 · 실제 거래 환율과 다를 수 있음 · 데이터: fawazahmed0 Currency API (ECB 기반, 영업일 기준)</div>`;
 
