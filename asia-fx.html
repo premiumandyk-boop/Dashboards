@@ -590,6 +590,57 @@ function computeOutlook() {
   return result;
 }
 
+function outlookSummarySentence(d, horizon) {
+  const is1m = horizon === '1m';
+  const mag  = is1m ? d.mag1m : d.mag3m;
+  const w    = is1m ? { global:0.25, policy:0.45, flow:0.30 } : d.weights;
+
+  const factors = [
+    { key:'global', score:d.factors.global, weight:w.global },
+    { key:'policy', score:d.factors.policy, weight:w.policy },
+    { key:'flow',   score:d.factors.flow,   weight:w.flow   },
+  ].map(f => ({ ...f, push: (f.score - 50) * f.weight }));
+  factors.sort((a,b) => Math.abs(b.push) - Math.abs(a.push));
+
+  const describe = f => {
+    const strong = f.score > 60, weak = f.score < 40;
+    if (f.key === 'global') {
+      if (strong) return '최근 다른 아시아 통화들에 비해 달러 대비 상대적으로 강세를 보이고 있고';
+      if (weak)   return '최근 다른 아시아 통화들에 비해 달러 대비 상대적으로 약세를 보이고 있고';
+      return '달러 대비 전반적인 방향성은 뚜렷하지 않고';
+    }
+    if (f.key === 'policy') {
+      if (d.rateInfo.real) {
+        const bp = d.rateInfo.diffBp;
+        if (bp > 30)  return `미국보다 정책금리가 ${bp}bp 더 높아서 돈이 몰릴 유인이 있고`;
+        if (bp < -30) return `미국보다 정책금리가 ${Math.abs(bp)}bp 더 낮아서 돈이 빠져나갈 유인이 있고`;
+        return `미국과의 정책금리 차이(${bp>=0?'+':''}${bp}bp)가 크지 않아 금리 요인의 영향은 제한적이고`;
+      }
+      if (strong) return '최근 한 달간 통화가 강세로 움직이는 단기 흐름이 나타나고 있고';
+      if (weak)   return '최근 한 달간 통화가 약세로 움직이는 단기 흐름이 나타나고 있고';
+      return '단기적인 방향성은 뚜렷하지 않고';
+    }
+    if (strong) return '지난 1년간 강세 흐름이 꾸준히 이어지고 있어';
+    if (weak)   return '지난 1년간 약세 흐름이 꾸준히 이어지고 있어';
+    return '뚜렷한 방향성 없이 등락을 반복하고 있어';
+  };
+
+  const [top, second] = factors;
+  const dirWord = mag > 0.3 ? '강세(절상)' : mag < -0.3 ? '약세(절하)' : '보합';
+  const sameDirection = (top.push >= 0) === (second.push >= 0) || (Math.abs(second.push) < 0.5);
+
+  let s = `${d.name}(${d.code})은(는) ${describe(top)} `;
+  s += sameDirection
+    ? `${describe(second)} 두 요인이 비슷한 방향을 가리키고 있습니다. `
+    : `반대로 ${describe(second)} 이 부분은 반대 방향으로 작용하고 있어 힘이 서로 상쇄되는 편입니다. `;
+  s += `이를 종합하면 ${is1m?'1개월':'3개월'} 뒤에는 ${dirWord} 쪽으로 ${Math.abs(mag).toFixed(1)}%가량 움직일 것으로 추정됩니다.`;
+
+  if (d.confidence === 'LOW') s += ' 다만 세 요인의 방향이 엇갈리는 편이라 확신도는 낮으니 참고 정도로만 봐주세요.';
+  else if (d.confidence === 'HIGH') s += ' 세 요인이 대체로 같은 방향을 가리키고 있어 상대적으로 확신도가 높은 편입니다.';
+
+  return s;
+}
+
 function outlookDetailHTML(d, horizon) {
   const is1m   = horizon === '1m';
   const mag    = is1m ? d.mag1m : d.mag3m;
@@ -613,6 +664,10 @@ function outlookDetailHTML(d, horizon) {
         <div style="font-size:15px;font-weight:600;color:var(--text)">${d.name} (${d.code})</div>
         <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">${is1m?'1개월':'3개월'} 전망 상세</div>
       </div>
+    </div>
+
+    <div style="background:rgba(212,168,83,0.08);border:1px solid var(--gold-dim);border-radius:6px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.7;color:var(--text2)">
+      ${outlookSummarySentence(d, horizon)}
     </div>
 
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;margin:12px 0;text-align:center">
